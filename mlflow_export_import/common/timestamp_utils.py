@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 TS_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -34,17 +34,11 @@ def utc_str_to_millis(sdt):
 
 
 def utc_str_to_seconds(sdt):
-    """ Convert UTC string to epoch seconds. """
-    from datetime import timezone
+    """ Convert UTC string to epoch seconds. A value without an offset is treated as UTC. """
     dt = datetime.fromisoformat(sdt)
-    # If datetime is naive (no timezone), treat it as local time
     if dt.tzinfo is None:
-        # Convert to timestamp using local timezone
-        seconds = dt.timestamp()
-    else:
-        # If timezone-aware, convert to UTC and get timestamp
-        seconds = dt.timestamp()
-    return seconds
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
 
 
 def adjust_timestamps(dct, keys):
