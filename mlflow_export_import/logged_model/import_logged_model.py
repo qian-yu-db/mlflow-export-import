@@ -77,13 +77,14 @@ def import_logged_model(
 
         if run_id:
             _log_metrics(mlflow_client, run_id, src_logged_model_dct["metrics"], logged_model.model_id)
-            from mlflow.entities import LoggedModelOutput
             if model_type == "input":
+                from mlflow.entities import LoggedModelInput
                 mlflow_client.log_inputs(run_id=run_id,
-                                         models=[LoggedModelOutput(logged_model.model_id, step= step if step else 0)])
+                                         models=[LoggedModelInput(logged_model.model_id)])
             else:
+                from mlflow.entities import LoggedModelOutput
                 mlflow_client.log_outputs(run_id=run_id,
-                                         models=[LoggedModelOutput(logged_model.model_id, step=step if step else 0)])
+                                         models=[LoggedModelOutput(logged_model.model_id, step=step if step is not None else 0)])
 
         path = _fs.mk_local_path(os.path.join(input_dir, "artifacts"))
 
@@ -93,12 +94,15 @@ def import_logged_model(
                 update_logged_model_mlmodel_data(mlflow_client, logged_model, os.path.join(path, "MLmodel"))
 
         mlflow_client.finalize_logged_model(logged_model.model_id, src_logged_model_dct["status"])
-        mlflow_client.set_terminated(run_id, RunStatus.to_string(RunStatus.FINISHED))
+        if run_id:
+            mlflow_client.set_terminated(run_id, RunStatus.to_string(RunStatus.FINISHED))
         _logger.info(f"Imported logged model {src_logged_model_dct['name']} into experiment {exp.name}")
+        return logged_model
     except Exception as e:
         from mlflow.entities import LoggedModelStatus
         mlflow_client.finalize_logged_model(logged_model.model_id, LoggedModelStatus.FAILED)
-        mlflow_client.set_terminated(run_id, RunStatus.to_string(RunStatus.FAILED))
+        if run_id:
+            mlflow_client.set_terminated(run_id, RunStatus.to_string(RunStatus.FAILED))
         import traceback
         traceback.print_exc()
         raise MlflowExportImportException(e, f"Importing logged-model {src_logged_model_dct['name']} of experiment '{exp.name}' failed")

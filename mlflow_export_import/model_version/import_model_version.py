@@ -7,6 +7,9 @@ import os
 import time
 import click
 
+from mlflow.entities.model_registry import ModelVersionTag
+from mlflow.exceptions import MlflowException
+
 from mlflow_export_import.common.click_options import (
     opt_input_dir,
     opt_model,
@@ -26,6 +29,12 @@ from mlflow_export_import.common.source_tags import set_source_tags_for_field, f
 from mlflow_export_import.common.timestamp_utils import format_seconds
 from mlflow_export_import.run.import_run import import_run
 from mlflow_export_import.client.client_utils import create_mlflow_client, create_dbx_client
+from mlflow_export_import.model.model_utils import (
+    _extract_model_id,
+    _get_logged_model_artifact_path,
+    _is_logged_model_source,
+    find_destination_logged_model_id,
+)
 
 _logger = utils.getLogger(__name__)
 
@@ -71,11 +80,13 @@ def import_model_version(
         mlflow_utils.set_experiment(mlflow_client, dbx_client, experiment_name, tags)
 
     path = os.path.join(input_dir, "run")
+    logged_model_id_map = {}
     dst_run, _ = import_run(
         input_dir = path,
         experiment_name = experiment_name,
         import_source_tags = import_source_tags,
-        mlflow_client = mlflow_client
+        mlflow_client = mlflow_client,
+        logged_model_id_map = logged_model_id_map
     )
 
     if create_model:
@@ -86,8 +97,26 @@ def import_model_version(
         if created_model and import_permissions and perms:
             model_utils.update_model_permissions(mlflow_client, dbx_client, model_name, perms)
 
-    model_path = _get_model_path(src_vr)
-    dst_source = f"{dst_run.info.artifact_uri}/{model_path}"
+    destination_model_id = None
+    if _is_logged_model_source(src_vr["source"]):
+        source_model_id = _extract_model_id(src_vr["source"])
+        destination_model_id = logged_model_id_map.get(source_model_id, model_id)
+        if not destination_model_id:
+            raise MlflowExportImportException(
+                f"Cannot resolve destination logged model ID for source model '{source_model_id}'"
+            )
+        dst_source = _get_logged_model_artifact_path(destination_model_id, mlflow_client)
+    else:
+        destination_model_id = find_destination_logged_model_id(
+            mlflow_client, mlflow_client.get_run(dst_run.info.run_id), src_vr["source"]
+        )
+        if destination_model_id:
+            dst_source = _get_logged_model_artifact_path(
+                destination_model_id, mlflow_client
+            )
+        else:
+            model_path = _get_model_path(src_vr)
+            dst_source = f"{dst_run.info.artifact_uri}/{model_path}"
     dst_vr = _import_model_version(
         mlflow_client,
         model_name = model_name,
@@ -95,7 +124,8 @@ def import_model_version(
         dst_run_id = dst_run.info.run_id,
         dst_source = dst_source,
         import_stages_and_aliases = import_stages_and_aliases,
-        import_source_tags = import_source_tags
+        import_source_tags = import_source_tags,
+        model_id = destination_model_id
     )
     return dst_vr
 
@@ -107,7 +137,8 @@ def _import_model_version(
         dst_source,
         import_stages_and_aliases = True,
         import_source_tags = False,
-        model_id = None
+        model_id = None,
+        await_creation_for = None
     ):
     start_time = time.time()
     dst_source = dst_source.replace("file://","") # OSS MLflow
@@ -132,9 +163,13 @@ def _import_model_version(
     }
     if model_id:
         create_model_version_params["model_id"] = model_id
+    if await_creation_for is not None:
+        create_model_version_params["await_creation_for"] = await_creation_for
 
-    with MlflowTrackingUriTweak(mlflow_client):
-        dst_vr = mlflow_client.create_model_version(**create_model_version_params)
+    dst_vr = _create_model_version_with_feature_store_fallback(
+        mlflow_client,
+        create_model_version_params,
+    )
 
     if import_stages_and_aliases:
         for alias in src_vr.get("aliases",[]):
@@ -148,6 +183,136 @@ def _import_model_version(
     dur = format_seconds(time.time()-start_time)
     _logger.info(f"Imported model version '{model_name}/{dst_vr.version}' in {dur}")
     return mlflow_client.get_model_version(dst_vr.name, dst_vr.version)
+
+
+def _create_model_version_with_feature_store_fallback(
+        mlflow_client,
+        create_model_version_params
+    ):
+    try:
+        with MlflowTrackingUriTweak(mlflow_client):
+            return mlflow_client.create_model_version(**create_model_version_params)
+    except MlflowException as e:
+        feature_store_error = (
+            "packaged by Databricks Feature Store and can only be registered "
+            "on a Databricks cluster"
+        )
+        if (
+            feature_store_error not in str(e)
+            or not model_utils.is_unity_catalog_model(
+                create_model_version_params["name"]
+            )
+        ):
+            raise
+        return _create_databricks_feature_store_model_version(
+            mlflow_client=mlflow_client,
+            model_name=create_model_version_params["name"],
+            source=create_model_version_params["source"],
+            run_id=create_model_version_params.get("run_id"),
+            description=create_model_version_params.get("description"),
+            tags=create_model_version_params.get("tags"),
+            model_id=create_model_version_params.get("model_id"),
+        )
+
+
+def _create_databricks_feature_store_model_version(
+        mlflow_client,
+        model_name,
+        source,
+        run_id,
+        description,
+        tags,
+        model_id
+    ):
+    """Register a Databricks Feature Store model from a local migration process.
+
+    MLflow's Unity Catalog client intentionally rejects Feature Store-packaged
+    models outside a Databricks cluster while deriving feature lineage. Migration
+    still needs to perform the rest of MLflow's create, artifact-copy, and finalize
+    sequence; otherwise the version remains in PENDING_REGISTRATION indefinitely.
+    """
+    try:
+        from mlflow.protos.databricks_uc_registry_messages_pb2 import (
+            CreateModelVersionRequest,
+        )
+        from mlflow.store._unity_catalog.registry.rest_store import (
+            get_full_name_from_sc,
+            get_model_version_dependencies,
+            message_to_json,
+            model_version_from_uc_proto,
+            uc_model_version_tag_from_mlflow_tags,
+        )
+    except ImportError as e:
+        raise MlflowExportImportException(
+            "The installed MLflow version does not support local migration of "
+            "Databricks Feature Store model versions. Run the import on a "
+            "Databricks cluster instead."
+        ) from e
+
+    registry_client = mlflow_client._get_registry_client()
+    store = registry_client.store
+    required_methods = (
+        "_call_endpoint",
+        "_finalize_model_version",
+        "_get_artifact_repo",
+        "_get_run_and_headers",
+        "_get_workspace_id",
+        "_local_model_dir",
+        "_validate_model_signature",
+    )
+    if any(not hasattr(store, method) for method in required_methods):
+        raise MlflowExportImportException(
+            "The configured registry client cannot complete local migration of "
+            "a Databricks Feature Store model version. Run the import on a "
+            "Databricks cluster instead."
+        )
+
+    _logger.warning(
+        "MLflow cannot derive Databricks Feature Store lineage outside a "
+        "Databricks cluster. Registering the migrated model without UC feature "
+        "dependency lineage; run the import on a cluster when that lineage must "
+        "be preserved."
+    )
+
+    full_name = get_full_name_from_sc(model_name, store.spark)
+    headers, _ = store._get_run_and_headers(run_id)
+    source_workspace_id = store._get_workspace_id(headers)
+    mlflow_tags = [
+        ModelVersionTag(key, str(value))
+        for key, value in (tags or {}).items()
+    ]
+
+    with store._local_model_dir(source, None) as local_model_dir:
+        store._validate_model_signature(local_model_dir)
+        if hasattr(store, "_download_model_weights_if_not_saved"):
+            store._download_model_weights_if_not_saved(local_model_dir)
+        dependencies = get_model_version_dependencies(local_model_dir)
+        request_params = dict(
+            name=full_name,
+            source=source,
+            run_id=run_id,
+            tags=uc_model_version_tag_from_mlflow_tags(mlflow_tags),
+            run_tracking_server_id=source_workspace_id,
+            feature_deps="",
+            model_version_dependencies=dependencies,
+        )
+        if description is not None:
+            request_params["description"] = description
+        if model_id is not None:
+            request_params["model_id"] = model_id
+        request = CreateModelVersionRequest(**request_params)
+        response = store._call_endpoint(
+            CreateModelVersionRequest,
+            message_to_json(request),
+        )
+        model_version = response.model_version
+        artifact_repo = store._get_artifact_repo(model_version, full_name)
+        artifact_repo.log_artifacts(local_dir=local_model_dir, artifact_path="")
+        finalized = store._finalize_model_version(
+            name=full_name,
+            version=model_version.version,
+        )
+    return model_version_from_uc_proto(finalized)
 
 
 def _get_model_path(src_vr):

@@ -24,6 +24,7 @@ def export_logged_models(
         experiment_ids,
         output_dir,
         logged_models_filter = None,
+        logged_model_ids = None,
         mlflow_client = None
     ):
     """
@@ -32,6 +33,7 @@ def export_logged_models(
       - String with comma-delimited experiment IDs such as '1,2' or 'all'
     :param output_dir: Directory where logged models will be exported
     :param logged_models_filter: Filter logged models based on run ids to experiments.
+    :param logged_model_ids: Always export these referenced logged-model IDs.
     :param mlflow_client: Mlflow client
     """
     if not has_logged_model_support():
@@ -54,7 +56,17 @@ def export_logged_models(
             "logged_models": []} for exp_id in experiment_ids
     }
 
-    logged_models = get_logged_models(mlflow_client, experiment_ids)
+    logged_models = list(get_logged_models(mlflow_client, experiment_ids))
+    logged_model_ids = set(logged_model_ids or [])
+    discovered_model_ids = {model.model_id for model in logged_models}
+    for model_id in logged_model_ids - discovered_model_ids:
+        try:
+            logged_models.append(mlflow_client.get_logged_model(model_id))
+        except Exception as e:
+            failed_logged_models.append(model_id)
+            _logger.error(
+                {"message": "Cannot resolve referenced logged model", "model_id": model_id, "Exception": e}
+            )
 
     if len(logged_models) == 0:
         _logger.info(f"No logged models found for experiment ids {experiment_ids}")
@@ -62,7 +74,9 @@ def export_logged_models(
 
     if logged_models_filter:
         logged_models = [logged_model for logged_model in logged_models
-                         if logged_model.source_run_id in logged_models_filter.get(str(logged_model.experiment_id), [])]
+                         if logged_model.model_id in logged_model_ids or
+                         logged_model.source_run_id is None or
+                         logged_model.source_run_id in logged_models_filter.get(str(logged_model.experiment_id), [])]
 
     table_data = [ logged_model.name for logged_model in logged_models ]
     columns = ["Logged Model Name"]
@@ -77,6 +91,13 @@ def export_logged_models(
             failed_logged_models
         )
         nums_logged_models_exported += 1
+        if logged_model.experiment_id not in export_results:
+            experiment = mlflow_client.get_experiment(logged_model.experiment_id)
+            export_results[logged_model.experiment_id] = {
+                "id": logged_model.experiment_id,
+                "name": experiment.name,
+                "logged_models": [],
+            }
         export_results[logged_model.experiment_id]["logged_models"].append(logged_model.model_id)
 
     info_attr = {

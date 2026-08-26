@@ -23,8 +23,10 @@ client_dst = mlflow.tracking.MlflowClient(uri_dst)
 _logger.info(f"client_dst: {client_dst}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def mlflow_context():
+    original_tracking_uri = mlflow.get_tracking_uri()
+    mlflow.set_tracking_uri(uri_src)
     with tempfile.TemporaryDirectory() as tmpdir:
         assert mlflow.get_tracking_uri() is not None
         output_dir = os.environ.get("MLFLOW_EXPORT_IMPORT_OUTPUT_DIR",None) # for debugging
@@ -32,6 +34,9 @@ def mlflow_context():
             utils_test.create_output_dir(output_dir)
         else:
             output_dir = tmpdir
-        yield MlflowContext(
-            client_src, client_dst, output_dir, os.path.join(output_dir,"run")
-        )
+        try:
+            yield MlflowContext(
+                client_src, client_dst, output_dir, os.path.join(output_dir,"run")
+            )
+        finally:
+            mlflow.set_tracking_uri(original_tracking_uri)

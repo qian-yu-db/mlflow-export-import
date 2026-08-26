@@ -74,13 +74,18 @@ class HttpClient(BaseHttpClient):
     """
     Wrapper for HTTP calls for MLflow Databricks APIs.
     """
-    def __init__(self, api_name, host=None, token=None):
+    def __init__(self, api_name, host=None, token=None, host_creds=None):
         """
         :param api_name: Name of base API such as 'api/2.0' or 'api/2.0/mlflow'.
         :param host: Host name of tracking server such as 'http://localhost:5000' or 'databricks://my_profile'.
         :param token: Databricks token if using Databricks.
         """
-        if host:
+        self.host_creds = host_creds
+        self.api_name = api_name.strip("/")
+        if host_creds is not None:
+            host = host_creds.host
+            token = host_creds.token
+        elif host:
             # Assume 'host' is a Databricks profile
             if not host.startswith("http"):
                 profile = host.replace("databricks://","")
@@ -94,11 +99,13 @@ class HttpClient(BaseHttpClient):
                 http_status_code=401
             )
         self.host = host
-        self.api_uri = os.path.join(host, api_name)
+        self.api_uri = os.path.join(host, self.api_name)
         self.token = token
 
 
     def _get(self, resource, params=None):
+        if self.host_creds is not None:
+            return self._mlflow_request("GET", resource, params=params)
         uri = self._mk_uri(resource)
         rsp = requests.get(uri, headers=self._mk_headers(), data=params, timeout=_TIMEOUT)
         return self._check_response(rsp, params)
@@ -114,7 +121,7 @@ class HttpClient(BaseHttpClient):
 
 
     def _post(self, resource, data=None):
-        return self._mutator(requests.post, resource, data)
+        return self._mutator("POST", requests.post, resource, data)
 
     def post(self, resource, data=None):
         """ Executes an HTTP POST call
@@ -126,7 +133,7 @@ class HttpClient(BaseHttpClient):
 
 
     def _put(self, resource, data=None):
-        return self._mutator(requests.put, resource, data)
+        return self._mutator("PUT", requests.put, resource, data)
 
     def put(self, resource, data=None):
         """ Executes an HTTP PUT call
@@ -138,7 +145,7 @@ class HttpClient(BaseHttpClient):
 
 
     def _patch(self, resource, data=None):
-        return self._mutator(requests.patch, resource, data)
+        return self._mutator("PATCH", requests.patch, resource, data)
 
     def patch(self, resource, data=None):
         """ Executes an HTTP PATCH call
@@ -150,6 +157,8 @@ class HttpClient(BaseHttpClient):
 
 
     def _delete(self, resource):
+        if self.host_creds is not None:
+            return self._mlflow_request("DELETE", resource)
         uri = self._mk_uri(resource)
         rsp = requests.delete(uri, headers=self._mk_headers(), timeout=_TIMEOUT)
         return self._check_response(rsp)
@@ -161,10 +170,33 @@ class HttpClient(BaseHttpClient):
         return json.loads(self._delete(resource).text)
 
 
-    def _mutator(self, method, resource, data=None):
+    def _mutator(self, method_name, method, resource, data=None):
+        if self.host_creds is not None:
+            return self._mlflow_request(method_name, resource, data=data)
         uri = self._mk_uri(resource)
         rsp = method(uri, headers=self._mk_headers(), data=data, timeout=_TIMEOUT)
         return self._check_response(rsp)
+
+
+    def _mlflow_request(self, method, resource, params=None, data=None):
+        from mlflow.utils.rest_utils import http_request
+
+        def parse_json(value):
+            if not isinstance(value, str):
+                return value
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+
+        endpoint = f"/{self.api_name}/{resource.lstrip('/')}"
+        kwargs = {"timeout": _TIMEOUT, "raise_on_status": False}
+        if params is not None:
+            kwargs["params"] = parse_json(params)
+        if data is not None:
+            kwargs["json"] = parse_json(data)
+        rsp = http_request(self.host_creds, endpoint, method, **kwargs)
+        return self._check_response(rsp, params if params is not None else data)
 
 
     def get_api_uri(self):
@@ -222,16 +254,16 @@ class DatabricksHttpClient(HttpClient):
     """
     Databricks API client: api/2.0
     """
-    def __init__(self, host=None, token=None):
-        super().__init__("api/2.0", host, token)
+    def __init__(self, host=None, token=None, host_creds=None):
+        super().__init__("api/2.0", host, token, host_creds)
 
 
 class MlflowHttpClient(HttpClient):
     """
     MLflow API client: api/2.0
     """
-    def __init__(self, host=None, token=None):
-        super().__init__("api/2.0/mlflow", host, token)
+    def __init__(self, host=None, token=None, host_creds=None):
+        super().__init__("api/2.0/mlflow", host, token, host_creds)
 
 
 @click.command()

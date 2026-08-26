@@ -1,6 +1,10 @@
 import os
+from pathlib import Path
+
 import pandas as pd
 import mlflow
+import pytest
+from packaging import version
 from mlflow.models.signature import infer_signature
 from mlflow_export_import.model_version.export_model_version import export_model_version
 from mlflow_export_import.tools.signature_utils import get_model_signature
@@ -13,14 +17,14 @@ _input_df = pd.read_csv("../data/iris_train.csv")
 _output_df = pd.read_csv("../data/iris_score.csv")
 
 
-def test_set_run_signature(mlflow_context):
+def test_set_logged_model_signature(mlflow_context):
     """
-    Tests set_signature with runs scheme: 'runs:/73ab168e5775409fa3595157a415bb62/model'
+    Tests set_signature with a logged model's artifact location.
     """
-    runs_uri, models_uri, signature, _ = _prep(mlflow_context)
-    mlflow.models.set_signature(runs_uri, signature)
+    logged_model_uri, models_uri, signature, _ = _prep(mlflow_context)
+    mlflow.models.set_signature(logged_model_uri, signature)
 
-    assert get_model_signature(runs_uri)
+    assert get_model_signature(logged_model_uri)
 
     # NOTE: when you update a run's model signature, the model version it was created from also gets updated. AFAIK not documented.
     assert get_model_signature(models_uri)
@@ -52,15 +56,17 @@ def test_set_file_signature_with_file_scheme(mlflow_context):
     """
     Tests set_signature with file scheme: 'file:/opts/mlflow_export_imports/tests/run/artifacts/model'
     """
+    if version.parse(mlflow.__version__) >= version.parse("3.9.0"):
+        pytest.xfail("MLflow 3.9 Model.load does not resolve file:// URIs before checking existence")
     _run_set_file_signature(mlflow_context, use_file_scheme=True)
 
 
 def test_model_signature_get_methods(mlflow_context):
     src_vr, src_run = _create_model_version(mlflow_context)
 
-    runs_uri = f"runs:/{src_run.info.run_id}/model"
-    sig1 = get_model_signature(runs_uri, False)
-    sig2 = get_model_signature(runs_uri, True)
+    logged_model_uri = _get_logged_model_uri(mlflow_context.client_src, src_run)
+    sig1 = get_model_signature(logged_model_uri, False)
+    sig2 = get_model_signature(logged_model_uri, True)
     assert sig1 == sig2
 
     models_uri = f"models:/{src_vr.name}/{src_vr.version}"
@@ -74,7 +80,7 @@ def _run_set_file_signature(mlflow_context, use_file_scheme=False):
     Tests set_signature with file scheme: 'file:/opts/mlflow_export_imports/tests/run/artifacts/model'
     Tests set_signature without file scheme: 'out/run/artifacts/model'
     """
-    _, _, signature, src_vr = _prep(mlflow_context)
+    logged_model_uri, _, signature, src_vr = _prep(mlflow_context)
 
     export_model_version(
         model_name = src_vr.name,
@@ -82,8 +88,11 @@ def _run_set_file_signature(mlflow_context, use_file_scheme=False):
         output_dir = mlflow_context.output_dir,
         mlflow_client = mlflow_context.client_src
     )
-    model_path = os.path.join(mlflow_context.output_dir,"run/artifacts/model")
-    file_uri = f"file:{os.path.abspath(model_path)}" if use_file_scheme else model_path
+    model_id = src_vr.source.split("models:/", 1)[1]
+    model_path = os.path.join(
+        mlflow_context.output_dir, "run", model_id, "artifacts"
+    )
+    file_uri = Path(model_path).resolve().as_uri() if use_file_scheme else model_path
 
     model_info = mlflow.models.get_model_info(file_uri)
     assert not model_info.signature
@@ -97,14 +106,20 @@ def _run_set_file_signature(mlflow_context, use_file_scheme=False):
 def _prep(mlflow_context):
     src_vr, src_run = _create_model_version(mlflow_context)
 
-    runs_uri = f"runs:/{src_run.info.run_id}/model"
-    assert not get_model_signature(runs_uri)
+    logged_model_uri = _get_logged_model_uri(mlflow_context.client_src, src_run)
+    assert not get_model_signature(logged_model_uri)
 
     models_uri = f"models:/{src_vr.name}/{src_vr.version}"
     assert not get_model_signature(models_uri)
 
     signature = infer_signature(_input_df, _output_df)
-    return runs_uri, models_uri, signature, src_vr
+    return logged_model_uri, models_uri, signature, src_vr
+
+
+def _get_logged_model_uri(client, run):
+    model_outputs = getattr(getattr(run, "outputs", None), "model_outputs", []) or []
+    assert len(model_outputs) == 1
+    return client.get_logged_model(model_outputs[0].model_id).artifact_location
 
 
 def _create_model_version(mlflow_context):

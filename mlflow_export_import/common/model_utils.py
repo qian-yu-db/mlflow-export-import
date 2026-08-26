@@ -153,11 +153,21 @@ def model_version_to_dict(version):
                 dct[k] = utils.strip_underscores(v)
             else:
                 dct[k] = str(v)
+        elif k in ("params", "metrics") and v is not None:
+            dct[k] = [_model_metadata_to_dict(item) for item in v]
         else:
             if k == "creation_time":  # Wot!
                 k = "creation_timestamp"
             dct[k] = v
     return dct
+
+
+def _model_metadata_to_dict(item):
+    if hasattr(item, "to_dictionary"):
+        return item.to_dictionary()
+    if hasattr(item, "__dict__"):
+        return utils.strip_underscores(item)
+    return item
 
 
 def dump_model_version(version, title=None):
@@ -197,13 +207,13 @@ def get_registered_model(mlflow_client, model_name, get_permissions=False):
         }
 
     http_client = create_http_client(mlflow_client, model_name)
-    if get_permissions and utils.calling_databricks():
+    dbx_client = create_dbx_client(mlflow_client) if get_permissions else None
+    if get_permissions and utils.calling_databricks(dbx_client):
         if is_unity_catalog_model(model_name):
             _model = http_client.get("registered-models/get", {"name": model_name})
             model = _model["registered_model"]
             permissions = uc_permissions_utils.get_permissions(mlflow_client, model_name)
         else:
-            dbx_client = create_dbx_client(mlflow_client)
             _model = http_client.get("databricks/registered-models/get", { "name": model_name })
             model = _model.pop("registered_model_databricks", None)
             permissions = ws_permissions_utils.get_model_permissions_by_id(dbx_client, model["id"])

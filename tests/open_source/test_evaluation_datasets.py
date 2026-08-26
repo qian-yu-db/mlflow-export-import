@@ -91,8 +91,7 @@ def test_export_import_evaluation_dataset(mlflow_context):
     # Validate that records were actually imported (not just metadata)
     imported_dataset = mlflow.genai.get_dataset(dataset_id=result[1])
     assert imported_dataset is not None
-    # Access records to trigger lazy loading and verify data was imported
-    imported_records = list(imported_dataset.records)
+    imported_records = imported_dataset.to_df()
     assert len(imported_records) == len(records)
 
 
@@ -138,7 +137,7 @@ def test_dataset_name_override_on_import(mlflow_context):
     
     # Validate records were imported
     imported_dataset = mlflow.genai.get_dataset(dataset_id=result[1])
-    imported_records = list(imported_dataset.records)
+    imported_records = imported_dataset.to_df()
     assert len(imported_records) == len(records)
 
 
@@ -197,8 +196,7 @@ def test_bulk_export_import_evaluation_datasets(mlflow_context):
         assert len(matching_datasets) > 0, f"Dataset {dataset_name} not found"
         
         imported_dataset = mlflow.genai.get_dataset(dataset_id=matching_datasets[0].dataset_id)
-        # Access records to trigger lazy loading and verify data was imported
-        imported_records = list(imported_dataset.records)
+        imported_records = imported_dataset.to_df()
         assert len(imported_records) == len(expected_records)
 
 

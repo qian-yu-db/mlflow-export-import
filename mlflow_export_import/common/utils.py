@@ -10,8 +10,10 @@ _logger = getLogger(__name__)
 
 
 _calling_databricks = None
+_calling_databricks_by_uri = {}
+_UNSET_DATABRICKS_CLIENT = object()
 
-def calling_databricks(dbx_client=None):
+def calling_databricks(dbx_client=_UNSET_DATABRICKS_CLIENT):
     """
     Are we importing into Databricks?
     Check by making call to Databricks-specific API endpoint and check for 400 status code.
@@ -20,16 +22,29 @@ def calling_databricks(dbx_client=None):
     from mlflow_export_import.common import MlflowExportImportException
     from requests.exceptions import RequestException
 
-    global _calling_databricks
-    if _calling_databricks is None:
-        dbx_client = dbx_client or DatabricksHttpClient()
+    def probe(client):
         try:
-            dbx_client.get("clusters/list-node-types")
-            _calling_databricks =  True
+            client.get("clusters/list-node-types")
+            return True
         except MlflowExportImportException:
-            _calling_databricks =  False
+            return False
         except RequestException:
-            _calling_databricks =  False
+            return False
+
+    global _calling_databricks
+    if dbx_client is None:
+        return False
+
+    if dbx_client is not _UNSET_DATABRICKS_CLIENT:
+        key = dbx_client.get_api_uri()
+        if key not in _calling_databricks_by_uri:
+            _calling_databricks_by_uri[key] = probe(dbx_client)
+        result = _calling_databricks_by_uri[key]
+        _logger.info(f"Calling Databricks at '{key}': {result}")
+        return result
+
+    if _calling_databricks is None:
+        _calling_databricks = probe(DatabricksHttpClient())
         _logger.info(f"Calling Databricks: {_calling_databricks}")
     return _calling_databricks
 
@@ -44,14 +59,16 @@ _DATABRICKS_SKIP_TAGS = {
 }
 
 
-def create_mlflow_tags_for_databricks_import(tags):
-    if calling_databricks():
+def create_mlflow_tags_for_databricks_import(tags, dbx_client=None, is_databricks=None):
+    is_databricks = calling_databricks(dbx_client) if is_databricks is None else is_databricks
+    if is_databricks:
         tags = { k:v for k,v in tags.items() if not k in _DATABRICKS_SKIP_TAGS }
     return tags
 
 
-def set_dst_user_id(tags, user_id, use_src_user_id):
-    if calling_databricks():
+def set_dst_user_id(tags, user_id, use_src_user_id, dbx_client=None, is_databricks=None):
+    is_databricks = calling_databricks(dbx_client) if is_databricks is None else is_databricks
+    if is_databricks:
         return
     from mlflow.entities import RunTag
     from mlflow.utils.mlflow_tags import MLFLOW_USER

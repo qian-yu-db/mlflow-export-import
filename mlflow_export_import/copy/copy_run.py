@@ -35,7 +35,7 @@ def copy(
     )
 
 
-def _copy(src_run_id, dst_experiment_name, src_client=None, dst_client=None):
+def _copy(src_run_id, dst_experiment_name, src_client=None, dst_client=None, logged_model_id_map=None):
     src_client = src_client or mlflow.MlflowClient()
     dst_client = dst_client or mlflow.MlflowClient()
     with tempfile.TemporaryDirectory() as download_dir:
@@ -48,7 +48,8 @@ def _copy(src_run_id, dst_experiment_name, src_client=None, dst_client=None):
         dst_run, _ = import_run(
             download_dir,
             dst_experiment_name,
-            mlflow_client = dst_client
+            mlflow_client = dst_client,
+            logged_model_id_map = logged_model_id_map
         )
         return dst_run
 

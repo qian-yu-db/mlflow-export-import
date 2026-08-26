@@ -121,7 +121,7 @@ def _run_test_run_start_date(mlflow_context, sleep_time):
         run_start_time = _fmt_utc_time_now()
         time.sleep(sleep_time)
     else:
-        run_start_time = _fmt_utc_time_before(abs(sleep_time))
+        run_start_time = _fmt_utc_time_from_millis(run1a.info.start_time - 1000)
 
     _create_simple_run(mlflow_context.client_src)
 
@@ -158,6 +158,10 @@ def _fmt_utc_time_before(seconds_before):
     seconds = time.time() - seconds_before
     dt = datetime.utcfromtimestamp(seconds)
     return dt.strftime(TS_FORMAT)
+
+def _fmt_utc_time_from_millis(milliseconds):
+    from datetime import timezone
+    return datetime.fromtimestamp(milliseconds / 1000, timezone.utc).strftime(TS_FORMAT)
 
 def _fmt_utc_time_now():
     from datetime import timezone

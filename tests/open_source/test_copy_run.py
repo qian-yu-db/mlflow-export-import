@@ -1,6 +1,7 @@
-from tests.open_source.oss_utils_test import create_simple_run
+from tests.open_source.oss_utils_test import create_simple_run, download_model_artifact
 from tests.compare_utils import compare_runs
 from tests.open_source.init_tests import mlflow_context
+from tests.core import MlflowContext
 
 from mlflow_export_import.copy import copy_run
 from tests.open_source.oss_utils_test import mk_test_object_name_default
@@ -24,7 +25,13 @@ def _init_run_test(mlflow_context, dst_mlflow_uri=None):
     
 def test_run_basic_without_dst_mlflow_uri(mlflow_context): 
     run1, run2 = _init_run_test(mlflow_context)
-    compare_runs(mlflow_context, run1, run2)
+    default_destination_context = MlflowContext(
+        mlflow_context.client_src,
+        mlflow_context.client_src,
+        mlflow_context.output_dir,
+        mlflow_context.output_run_dir,
+    )
+    compare_runs(default_destination_context, run1, run2)
 
 
 def test_run_basic_with_dst_mlflow_uri(mlflow_context): 
@@ -46,10 +53,14 @@ def test_model_predictions(mlflow_context):
     # Since you cannot load model flavors (such as mlflow.sklearn.load_model()) with the MlflowClient,
     # we have to manually load the model pickle file
 
-    path1 = mlflow_context.client_src.download_artifacts(run1.info.run_id, "model/model.pkl")
+    path1 = download_model_artifact(
+        mlflow_context.client_src, run1.info.run_id, "model", "model.pkl"
+    )
     with open(path1,"rb") as f:
         model1 = pickle.load(f)
-    path2 = mlflow_context.client_src.download_artifacts(run2.info.run_id, "model/model.pkl")
+    path2 = download_model_artifact(
+        mlflow_context.client_dst, run2.info.run_id, "model", "model.pkl"
+    )
     with open(path2, "rb") as f:
         model2 = pickle.load(f)
 

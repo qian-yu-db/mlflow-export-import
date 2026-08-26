@@ -87,15 +87,39 @@ def create_test_experiment(client, num_runs, mk_test_object_name=mk_test_object_
 
 def create_version(client, model_name, stage=None, archive_existing_versions=False):
     _, run = create_simple_run(client)
-    source = f"{run.info.artifact_uri}/model"
+    model_outputs = getattr(getattr(run, "outputs", None), "model_outputs", []) or []
+    model_id = model_outputs[0].model_id if model_outputs else None
+    source = f"models:/{model_id}" if model_id else f"{run.info.artifact_uri}/model"
     desc = "My version desc"
     tags = { "city": "yaxchilan", "uuid": utils_test.mk_uuid() }
-    vr = client.create_model_version(model_name, source, run.info.run_id, description=desc, tags=tags)
+    create_params = {
+        "name": model_name,
+        "source": source,
+        "run_id": run.info.run_id,
+        "description": desc,
+        "tags": tags,
+    }
+    if model_id:
+        create_params["model_id"] = model_id
+    vr = client.create_model_version(**create_params)
     alias = f"alias_{utils_test.mk_uuid()}"
     client.set_registered_model_alias(model_name, alias, vr.version)
     if stage:
         vr = client.transition_model_version_stage(model_name, vr.version, stage, archive_existing_versions)
     return vr, run
+
+
+def download_model_artifact(client, run_id, model_name, artifact_name):
+    run = client.get_run(run_id)
+    model_outputs = getattr(getattr(run, "outputs", None), "model_outputs", []) or []
+    for output in model_outputs:
+        logged_model = client.get_logged_model(output.model_id)
+        if logged_model.name == model_name:
+            return mlflow.artifacts.download_artifacts(
+                artifact_uri=f"{logged_model.artifact_location.rstrip('/')}/{artifact_name}",
+                tracking_uri=client.tracking_uri,
+            )
+    return client.download_artifacts(run_id, f"{model_name}/{artifact_name}")
 
 
 def list_experiments(client):

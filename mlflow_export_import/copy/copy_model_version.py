@@ -17,8 +17,16 @@ from . click_options import (
 from mlflow_export_import.common.source_tags import ExportTags
 from mlflow_export_import.common.click_options import opt_verbose
 from mlflow_export_import.common import utils, model_utils, dump_utils
+from mlflow_export_import.common import MlflowExportImportException
 from mlflow_export_import.common import ws_permissions_utils, uc_permissions_utils
-from mlflow_export_import.common.mlflow_utils import MlflowTrackingUriTweak
+from mlflow_export_import.model.model_utils import (
+    _extract_model_id,
+    _get_logged_model_artifact_path,
+    _is_logged_model_source,
+)
+from mlflow_export_import.model_version.import_model_version import (
+    _create_model_version_with_feature_store_fallback,
+)
 
 _logger = utils.getLogger(__name__)
 
@@ -84,7 +92,11 @@ def copy(
 
 def _create_registered_model(src_client, src_model_name, dst_client, dst_model_name, copy_permissions):
     model_exists = copy_utils.create_registered_model(dst_client, dst_model_name)
-    if not utils.calling_databricks() or not copy_permissions:
+    if not copy_permissions:
+        return
+    from mlflow_export_import.client.client_utils import create_dbx_client
+    dbx_client = create_dbx_client(dst_client)
+    if not utils.calling_databricks(dbx_client):
         return
     if model_exists:
         _logger.warning(f"Not copying permissions for model '{dst_model_name}' because model already exists")
@@ -100,34 +112,60 @@ def _create_registered_model(src_client, src_model_name, dst_client, dst_model_n
         permissions = uc_permissions_utils.get_permissions(src_client, src_model_name)
         uc_permissions_utils.update_permissions(dst_client, src_model_name, permissions)
     else:
-        from mlflow_export_import.client.client_utils import create_dbx_client
         permissions = ws_permissions_utils.get_model_permissions_by_name(src_client, src_model_name)
-        dbx_client = create_dbx_client(dst_client) # can move down into ws_permissions_utils.update_model_permissions
         model_utils.update_model_permissions(dst_client, dbx_client, dst_model_name, permissions)
 
 
 def _copy_model_version(src_version, dst_model_name, dst_experiment_name, src_client, dst_client, \
         copy_stages_and_aliases=False, copy_lineage_tags=False):
+    logged_model_id_map = {}
     if dst_experiment_name:
-        dst_run = copy_run._copy(src_version.run_id, dst_experiment_name, src_client, dst_client)
+        dst_run = copy_run._copy(
+            src_version.run_id,
+            dst_experiment_name,
+            src_client,
+            dst_client,
+            logged_model_id_map=logged_model_id_map
+        )
     else:
         dst_run = src_client.get_run(src_version.run_id)
 
-    mlflow_model_name = copy_utils.get_model_name(src_version.source)
-    source_uri = f"{dst_run.info.artifact_uri}/{mlflow_model_name}"
+    destination_model_id = None
+    if _is_logged_model_source(src_version.source):
+        source_model_id = _extract_model_id(src_version.source)
+        if dst_experiment_name:
+            destination_model_id = logged_model_id_map.get(source_model_id)
+            if not destination_model_id:
+                raise MlflowExportImportException(
+                    f"Cannot resolve destination logged model ID for source model '{source_model_id}'"
+                )
+            source_uri = _get_logged_model_artifact_path(
+                destination_model_id, dst_client
+            )
+        else:
+            destination_model_id = source_model_id
+            source_uri = _get_logged_model_artifact_path(source_model_id, src_client)
+    else:
+        mlflow_model_name = copy_utils.get_model_name(src_version.source)
+        source_uri = f"{dst_run.info.artifact_uri}/{mlflow_model_name}"
     if copy_lineage_tags:
         tags = _add_lineage_tags(src_version, dst_run, dst_model_name, src_client, dst_client)
     else:
         tags = src_version.tags
 
-    with MlflowTrackingUriTweak(dst_client):
-        dst_version = dst_client.create_model_version(
-            name = dst_model_name,
-            source = source_uri,
-            run_id = dst_run.info.run_id,
-            tags = tags,
-            description = src_version.description
-        )
+    create_model_version_params = dict(
+        name = dst_model_name,
+        source = source_uri,
+        run_id = dst_run.info.run_id,
+        tags = tags,
+        description = src_version.description
+    )
+    if destination_model_id:
+        create_model_version_params["model_id"] = destination_model_id
+    dst_version = _create_model_version_with_feature_store_fallback(
+        dst_client,
+        create_model_version_params,
+    )
     if copy_stages_and_aliases:
         if not model_utils.is_unity_catalog_model(dst_version.name) and \
            not model_utils.is_unity_catalog_model(src_version.name):
