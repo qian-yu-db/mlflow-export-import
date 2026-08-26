@@ -120,7 +120,6 @@ def import_run(
                     run_id = run.info.run_id,
                     mlflow_client = mlflow_client,
                     model_type = "input",
-                    step = model["step"],
                 )
                 logged_model_id_map[model["model_id"]] = logged_model.model_id
 

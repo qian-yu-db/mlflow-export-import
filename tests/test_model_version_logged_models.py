@@ -84,6 +84,60 @@ def test_import_model_version_uses_destination_logged_model_source(tmp_path, mon
     assert captured["model_id"] == "destination-model"
 
 
+def test_import_model_version_recognizes_logged_model_artifact_location(
+    tmp_path, monkeypatch
+):
+    version = {
+        "mlflow": {
+            "model_version": {
+                "name": "catalog.schema.source_model",
+                "version": "1",
+                "source": "dbfs:/source/models/source-model/artifacts",
+                "run_id": "source-run",
+                "tags": {},
+                "aliases": [],
+                "current_stage": "None",
+            }
+        }
+    }
+    (tmp_path / "version.json").write_text(json.dumps(version), encoding="utf-8")
+    (tmp_path / "run").mkdir()
+    destination_run = SimpleNamespace(
+        info=SimpleNamespace(
+            run_id="destination-run",
+            artifact_uri="dbfs:/destination/runs/destination-run/artifacts",
+        ),
+        outputs=SimpleNamespace(
+            model_outputs=[SimpleNamespace(model_id="destination-model")]
+        ),
+    )
+
+    def import_run(**kwargs):
+        kwargs["logged_model_id_map"]["source-model"] = "destination-model"
+        return destination_run, None
+
+    captured = {}
+    monkeypatch.setattr(import_model_version_module, "create_dbx_client", lambda client: None)
+    monkeypatch.setattr(import_model_version_module, "import_run", import_run)
+    monkeypatch.setattr(
+        import_model_version_module,
+        "_import_model_version",
+        lambda mlflow_client, **kwargs: captured.update(kwargs) or kwargs,
+    )
+
+    import_model_version_module.import_model_version(
+        model_name="catalog.schema.destination_model",
+        experiment_name="destination-experiment",
+        input_dir=str(tmp_path),
+        mlflow_client=_ModelVersionClient(),
+    )
+
+    assert captured["dst_source"] == (
+        "dbfs:/destination/models/destination-model/artifacts"
+    )
+    assert captured["model_id"] == "destination-model"
+
+
 def test_import_model_version_resolves_legacy_source_to_destination_logged_model(
     tmp_path, monkeypatch
 ):
@@ -264,6 +318,91 @@ def test_copy_model_version_registers_destination_logged_model(monkeypatch):
     )
     assert destination_client.created["model_id"] == "destination-model"
     assert destination_client.created["run_id"] == "destination-run"
+
+
+def test_copy_model_version_recognizes_logged_model_artifact_location(monkeypatch):
+    source_version = SimpleNamespace(
+        name="catalog.schema.source_model",
+        version="1",
+        run_id="source-run",
+        source="dbfs:/source/models/source-model/artifacts",
+        tags={},
+        description="source description",
+    )
+    destination_run = SimpleNamespace(
+        info=SimpleNamespace(
+            run_id="destination-run",
+            artifact_uri="dbfs:/destination/runs/destination-run/artifacts",
+        )
+    )
+    destination_client = _CopyDestinationClient()
+
+    def copy_run(*args, logged_model_id_map=None, **kwargs):
+        logged_model_id_map["source-model"] = "destination-model"
+        return destination_run
+
+    monkeypatch.setattr(copy_model_version_module.copy_run, "_copy", copy_run)
+    monkeypatch.setattr(
+        copy_model_version_module,
+        "_create_model_version_with_feature_store_fallback",
+        lambda client, params: client.create_model_version(**params),
+    )
+
+    copy_model_version_module._copy_model_version(
+        source_version,
+        "catalog.schema.destination_model",
+        "destination-experiment",
+        SimpleNamespace(),
+        destination_client,
+    )
+
+    assert destination_client.created["source"] == (
+        "dbfs:/destination/models/destination-model/artifacts"
+    )
+    assert destination_client.created["model_id"] == "destination-model"
+
+
+def test_shallow_copy_resolves_logged_model_with_source_client(monkeypatch):
+    source_version = SimpleNamespace(
+        name="source-model",
+        version="1",
+        run_id="source-run",
+        source="models:/source-model-id",
+        tags={},
+        description="source description",
+    )
+    source_client = SimpleNamespace(
+        get_run=lambda run_id: SimpleNamespace(
+            info=SimpleNamespace(run_id=run_id, artifact_uri="source-run-artifacts")
+        ),
+        get_logged_model=lambda model_id: SimpleNamespace(
+            artifact_location="s3://source/models/source-model-id/artifacts"
+        ),
+    )
+
+    class DestinationClient(_CopyDestinationClient):
+        def get_logged_model(self, model_id):
+            raise AssertionError("source logged-model IDs do not exist at the destination")
+
+    destination_client = DestinationClient()
+    monkeypatch.setattr(
+        copy_model_version_module,
+        "_create_model_version_with_feature_store_fallback",
+        lambda client, params: client.create_model_version(**params),
+    )
+
+    copy_model_version_module._copy_model_version(
+        source_version,
+        "destination-model",
+        None,
+        source_client,
+        destination_client,
+    )
+
+    assert destination_client.created["source"] == (
+        "s3://source/models/source-model-id/artifacts"
+    )
+    assert destination_client.created["model_id"] == "source-model-id"
 
 
 class _RegisteredModelImportClient:

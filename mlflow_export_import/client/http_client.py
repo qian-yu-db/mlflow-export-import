@@ -188,12 +188,13 @@ class HttpClient(BaseHttpClient):
                 return value
 
         endpoint = f"/{self.api_name}/{resource.lstrip('/')}"
-        kwargs = {"timeout": _TIMEOUT}
+        kwargs = {"timeout": _TIMEOUT, "raise_on_status": False}
         if params is not None:
             kwargs["params"] = parse_json(params)
         if data is not None:
             kwargs["json"] = parse_json(data)
-        return http_request(self.host_creds, endpoint, method, **kwargs)
+        rsp = http_request(self.host_creds, endpoint, method, **kwargs)
+        return self._check_response(rsp, params if params is not None else data)
 
 
     def get_api_uri(self):

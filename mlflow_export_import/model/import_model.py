@@ -29,6 +29,7 @@ from mlflow_export_import.bulk import rename_utils
 from mlflow_export_import.model.model_utils import (
     _extract_model_id,
     _get_logged_model_artifact_path,
+    _is_logged_model_source,
     find_destination_logged_model_id,
 )
 from mlflow_export_import.model_version.import_model_version import _import_model_version
@@ -196,7 +197,7 @@ class ModelImporter(BaseModelImporter):
         _logger.info(f"      run_artifact_uri: {run_artifact_uri}")
         _logger.info(f"      source:           {source}")
 
-        is_logged_model_source = source.startswith("models:/")
+        is_logged_model_source = _is_logged_model_source(source)
 
         dst_run, _ = import_run(
             input_dir = run_dir,

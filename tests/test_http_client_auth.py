@@ -3,8 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from mlflow.exceptions import MlflowException
 from mlflow.utils import rest_utils
 
+from mlflow_export_import.common import MlflowExportImportException
 from mlflow_export_import.client import client_utils
 from mlflow_export_import.client import http_client as http_client_module
 
@@ -82,3 +84,29 @@ def test_clients_preserve_mlflow_sdk_authentication(
         assert kwargs["params"] == payload
     else:
         assert kwargs["json"] == payload
+
+
+def test_sdk_http_errors_use_package_exception_contract(monkeypatch):
+    response = _Response()
+    response.status_code = 404
+    response.text = json.dumps({"error_code": "RESOURCE_DOES_NOT_EXIST"})
+
+    def http_request(
+        host_creds, endpoint, request_method, raise_on_status=True, **kwargs
+    ):
+        if raise_on_status:
+            raise MlflowException(
+                "not found", error_code="RESOURCE_DOES_NOT_EXIST"
+            )
+        return response
+
+    monkeypatch.setattr(rest_utils, "http_request", http_request)
+    client = http_client_module.DatabricksHttpClient(
+        host_creds=_mlflow_client_with_sdk_credentials()
+        ._tracking_client.store.get_host_creds()
+    )
+
+    with pytest.raises(MlflowExportImportException) as exc_info:
+        client.get("clusters/list-node-types")
+
+    assert exc_info.value.http_status_code == 404

@@ -1,4 +1,6 @@
 import json
+import os
+import stat
 
 import pytest
 
@@ -46,3 +48,14 @@ def test_write_file_preserves_existing_json_when_serialization_fails(tmp_path):
         write_file(str(path), {"invalid": object()})
 
     assert path.read_text(encoding="utf-8") == original
+
+
+def test_write_file_respects_umask_for_new_json(tmp_path):
+    path = tmp_path / "model.json"
+    previous_umask = os.umask(0o077)
+    try:
+        write_file(str(path), {"state": "valid"})
+    finally:
+        os.umask(previous_umask)
+
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600

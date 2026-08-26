@@ -3,7 +3,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from mlflow.entities import Experiment, LoggedModelOutput
+from mlflow.entities import Experiment, LoggedModelInput, LoggedModelOutput
 
 
 import_run_module = importlib.import_module("mlflow_export_import.run.import_run")
@@ -132,7 +132,7 @@ def test_import_run_records_destination_logged_model_ids(tmp_path, monkeypatch):
 def test_import_run_uses_destination_run_id_for_logged_model_inputs(tmp_path, monkeypatch):
     _write_run_export(
         tmp_path,
-        model_inputs=[{"model_id": "source-input-model", "step": 0}],
+        model_inputs=[{"model_id": "source-input-model"}],
     )
     client = _RunClient()
     _configure_run_import(monkeypatch, client)
@@ -148,6 +148,65 @@ def test_import_run_uses_destination_run_id_for_logged_model_inputs(tmp_path, mo
     assert logged_model_id_map == {
         "source-input-model": "destination-source-input-model"
     }
+
+
+def test_import_logged_model_uses_input_entity_without_step(tmp_path, monkeypatch):
+    (tmp_path / "logged_model.json").write_text(
+        json.dumps(
+            {
+                "mlflow": {
+                    "name": "input-model",
+                    "tags": {},
+                    "params": [],
+                    "metrics": [],
+                    "model_type": None,
+                    "source_run_id": "source-run",
+                    "status": "READY",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    captured_inputs = []
+
+    class Client:
+        def create_logged_model(self, **kwargs):
+            return SimpleNamespace(model_id="destination-model")
+
+        def log_inputs(self, run_id, models):
+            captured_inputs.extend(models)
+
+        def log_batch(self, run_id, metrics):
+            pass
+
+        def log_outputs(self, run_id, models):
+            pytest.fail("model inputs must not be logged as model outputs")
+
+        def finalize_logged_model(self, model_id, status):
+            pass
+
+        def set_terminated(self, run_id, status):
+            pass
+
+    monkeypatch.setattr(import_logged_model_module, "has_logged_model_support", lambda: True)
+    monkeypatch.setattr(import_logged_model_module, "create_dbx_client", lambda client: None)
+    monkeypatch.setattr(
+        import_logged_model_module.mlflow_utils,
+        "set_experiment",
+        lambda *args: SimpleNamespace(
+            experiment_id="destination-experiment", name="destination"
+        ),
+    )
+
+    import_logged_model_module.import_logged_model(
+        input_dir=str(tmp_path),
+        experiment_name="destination",
+        run_id="destination-run",
+        model_type="input",
+        mlflow_client=Client(),
+    )
+
+    assert captured_inputs == [LoggedModelInput("destination-model")]
 
 
 class _ExportRunClient:
@@ -360,6 +419,47 @@ def test_import_model_imports_each_logged_model_once(tmp_path, monkeypatch, sour
     )
 
     assert import_count == 1
+
+
+def test_import_model_recognizes_logged_model_artifact_location(tmp_path, monkeypatch):
+    run_dir = tmp_path / "source-run"
+    run_dir.mkdir()
+    _write_run_export(run_dir)
+    run_imports = []
+    logged_model_imports = []
+
+    def import_run(**kwargs):
+        run_imports.append(kwargs)
+        return SimpleNamespace(info=SimpleNamespace(run_id="destination-run")), None
+
+    def import_logged_model(**kwargs):
+        logged_model_imports.append(kwargs)
+
+    client = SimpleNamespace(
+        get_run=lambda run_id: SimpleNamespace(
+            info=SimpleNamespace(
+                run_id="destination-run", artifact_uri="destination-artifacts"
+            )
+        )
+    )
+    monkeypatch.setattr(import_model_module, "import_run", import_run)
+    monkeypatch.setattr(import_model_module, "import_logged_model", import_logged_model)
+    importer = import_model_module.ModelImporter(mlflow_client=client)
+
+    importer._import_run(
+        input_dir=str(tmp_path),
+        experiment_name="destination",
+        vr={
+            "name": "registered-model",
+            "version": "1",
+            "run_id": "source-run",
+            "source": "dbfs:/source/models/source-model/artifacts",
+            "current_stage": "None",
+        },
+    )
+
+    assert run_imports[0]["import_logged_models"] is False
+    assert logged_model_imports[0]["input_dir"] == str(tmp_path / "source-model")
 
 
 def test_import_model_restores_deleted_run_after_logged_model(tmp_path, monkeypatch):

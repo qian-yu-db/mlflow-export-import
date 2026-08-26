@@ -19,7 +19,11 @@ from mlflow_export_import.common.click_options import opt_verbose
 from mlflow_export_import.common import utils, model_utils, dump_utils
 from mlflow_export_import.common import MlflowExportImportException
 from mlflow_export_import.common import ws_permissions_utils, uc_permissions_utils
-from mlflow_export_import.model.model_utils import _extract_model_id, _get_logged_model_artifact_path
+from mlflow_export_import.model.model_utils import (
+    _extract_model_id,
+    _get_logged_model_artifact_path,
+    _is_logged_model_source,
+)
 from mlflow_export_import.model_version.import_model_version import (
     _create_model_version_with_feature_store_fallback,
 )
@@ -127,16 +131,20 @@ def _copy_model_version(src_version, dst_model_name, dst_experiment_name, src_cl
         dst_run = src_client.get_run(src_version.run_id)
 
     destination_model_id = None
-    if src_version.source.startswith("models:/"):
+    if _is_logged_model_source(src_version.source):
         source_model_id = _extract_model_id(src_version.source)
-        destination_model_id = logged_model_id_map.get(source_model_id)
-        if destination_model_id is None and not dst_experiment_name:
-            destination_model_id = source_model_id
-        if not destination_model_id:
-            raise MlflowExportImportException(
-                f"Cannot resolve destination logged model ID for source model '{source_model_id}'"
+        if dst_experiment_name:
+            destination_model_id = logged_model_id_map.get(source_model_id)
+            if not destination_model_id:
+                raise MlflowExportImportException(
+                    f"Cannot resolve destination logged model ID for source model '{source_model_id}'"
+                )
+            source_uri = _get_logged_model_artifact_path(
+                destination_model_id, dst_client
             )
-        source_uri = _get_logged_model_artifact_path(destination_model_id, dst_client)
+        else:
+            destination_model_id = source_model_id
+            source_uri = _get_logged_model_artifact_path(source_model_id, src_client)
     else:
         mlflow_model_name = copy_utils.get_model_name(src_version.source)
         source_uri = f"{dst_run.info.artifact_uri}/{mlflow_model_name}"

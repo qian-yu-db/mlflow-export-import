@@ -32,6 +32,7 @@ from mlflow_export_import.client.client_utils import create_mlflow_client, creat
 from mlflow_export_import.model.model_utils import (
     _extract_model_id,
     _get_logged_model_artifact_path,
+    _is_logged_model_source,
     find_destination_logged_model_id,
 )
 
@@ -97,7 +98,7 @@ def import_model_version(
             model_utils.update_model_permissions(mlflow_client, dbx_client, model_name, perms)
 
     destination_model_id = None
-    if src_vr["source"].startswith("models:/"):
+    if _is_logged_model_source(src_vr["source"]):
         source_model_id = _extract_model_id(src_vr["source"])
         destination_model_id = logged_model_id_map.get(source_model_id, model_id)
         if not destination_model_id:

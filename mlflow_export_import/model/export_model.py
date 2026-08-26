@@ -23,7 +23,10 @@ from mlflow_export_import.common import utils, io_utils, model_utils
 from mlflow_export_import.common.timestamp_utils import adjust_timestamps
 from mlflow_export_import.common import MlflowExportImportException
 from mlflow_export_import.run.export_run import export_run
-from mlflow_export_import.model.model_utils import _extract_model_id
+from mlflow_export_import.model.model_utils import (
+    _extract_model_id,
+    _is_logged_model_source,
+)
 from mlflow_export_import.logged_model.export_logged_model import export_logged_model
 
 _logger = utils.getLogger(__name__)
@@ -145,16 +148,17 @@ def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, fai
             _output_dir = os.path.join(output_dir, "version_models", vr.version)
             vr_dct["_download_uri"] = model_utils.export_version_model(mlflow_client, vr, _output_dir)
 
+        is_logged_model_source = _is_logged_model_source(vr.source)
         run = export_run(vr.run_id,
             output_dir = os.path.join(output_dir, vr.run_id),
             export_deleted_runs = opts.export_deleted_runs,
             notebook_formats = opts.notebook_formats,
             mlflow_client = mlflow_client,
             raise_exception = True,
-            export_logged_models = "models" not in vr.source
+            export_logged_models = not is_logged_model_source
         )
 
-        if "models" in vr.source:
+        if is_logged_model_source:
             model_id = _extract_model_id(vr.source)
             export_logged_model(
                 model_id = model_id,
