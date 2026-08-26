@@ -5,6 +5,7 @@ Imports an experiment to a directory.
 import os
 import click
 from mlflow.entities import RunStatus
+from mlflow.entities.lifecycle_stage import LifecycleStage
 
 from mlflow_export_import.common.click_options import (
     opt_experiment_name,
@@ -90,7 +91,9 @@ def import_experiment(
             input_dir = os.path.join(input_dir, f'runs/{src_run_id}'),
             dst_notebook_dir = dst_notebook_dir,
             import_source_tags = import_source_tags,
-            use_src_user_id = use_src_user_id
+            use_src_user_id = use_src_user_id,
+            import_logged_models = False,
+            restore_run_lifecycle = False
         )
         dst_run_id = dst_run.info.run_id
         run_ids_map[src_run_id] = { "dst_run_id": dst_run_id, "src_parent_run_id": src_parent_run_id }
@@ -137,6 +140,9 @@ def import_experiment(
                     mlflow_client=mlflow_client,
                 )
                 imported_traces.append(trace_id)
+
+        if src_run_dct["info"]["lifecycle_stage"] == LifecycleStage.DELETED:
+            mlflow_client.delete_run(dst_run_id)
 
     ## Importing the logged models that are not part of run
     if mlflow_dct.get("logged_models"):

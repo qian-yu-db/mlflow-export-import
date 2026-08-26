@@ -36,7 +36,7 @@ def export_run(
         notebook_formats = None,
         raise_exception = False,
         mlflow_client = None,
-        export_logged_models = False
+        export_logged_models = True
     ):
     """
     :param run_id: Run ID.

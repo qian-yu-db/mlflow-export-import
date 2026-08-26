@@ -1,6 +1,10 @@
 from mlflow_export_import.run.export_run import export_run
 from mlflow_export_import.run.import_run import import_run
-from tests.open_source.oss_utils_test import create_simple_run, mk_dst_experiment_name
+from tests.open_source.oss_utils_test import (
+    create_simple_run,
+    download_model_artifact,
+    mk_dst_experiment_name,
+)
 from tests.utils_test import create_output_dir
 from tests.compare_utils import compare_runs
 from tests.open_source.init_tests import mlflow_context
@@ -85,10 +89,14 @@ def test_model_predictions(mlflow_context):
     # Since you cannot load model flavors (such as mlflow.sklearn.load_model()) with the MlflowClient,
     # we have to manually load the model pickle file
 
-    path1 = mlflow_context.client_src.download_artifacts(run_id1, "model/model.pkl")
+    path1 = download_model_artifact(
+        mlflow_context.client_src, run_id1, "model", "model.pkl"
+    )
     with open(path1,"rb") as f:
         model1 = pickle.load(f)
-    path2 = mlflow_context.client_src.download_artifacts(run_id2, "model/model.pkl")
+    path2 = download_model_artifact(
+        mlflow_context.client_dst, run_id2, "model", "model.pkl"
+    )
     with open(path2, "rb") as f:
         model2 = pickle.load(f)
 

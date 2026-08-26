@@ -1,5 +1,6 @@
 from mlflow_export_import.common import utils
 from mlflow_export_import.common.iterators import SearchRunsIterator
+from mlflow_export_import.client import client_utils
 
 _logger = utils.getLogger(__name__)
 
@@ -8,7 +9,7 @@ def get_nested_runs(client, runs):
     """
     Return set of run_ids and their nested run descendants from list of run IDs.
     """
-    if utils.calling_databricks():
+    if utils.calling_databricks(client_utils.create_dbx_client(client)):
         return get_nested_runs_by_rootRunId(client, runs)
     else:
         from . import oss_nested_runs_utils

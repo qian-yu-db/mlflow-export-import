@@ -122,10 +122,19 @@ def export_experiment(
 
     # Export Logged Models
     if has_logged_model_support():
+        selected_run_ids = set(ok_run_ids)
+        if logged_models_filter is not None:
+            requested_run_ids = logged_models_filter.get(str(exp.experiment_id), [])
+            selected_run_ids.intersection_update(requested_run_ids)
+        effective_logged_models_filter = {
+            str(exp.experiment_id): [
+                run_id for run_id in ok_run_ids if run_id in selected_run_ids
+            ]
+        }
         ok_logged_models, failed_logged_models = export_logged_models.export_logged_models(
             experiment_ids = [exp.experiment_id],
             output_dir = os.path.join(output_dir, "logged_models"),
-            logged_models_filter = logged_models_filter,
+            logged_models_filter = effective_logged_models_filter,
             mlflow_client = mlflow_client,
         )
         info_attr["ok_logged_models"] = len(ok_logged_models)
@@ -182,7 +191,8 @@ def _export_run(mlflow_client, run, output_dir,
         output_dir = os.path.join(output_dir, f'runs/{run.info.run_id}'),
         export_deleted_runs = export_deleted_runs,
         notebook_formats = notebook_formats,
-        mlflow_client = mlflow_client
+        mlflow_client = mlflow_client,
+        export_logged_models = False
     )
     if is_success:
         ok_run_ids.append(run.info.run_id)

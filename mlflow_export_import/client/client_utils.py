@@ -10,9 +10,9 @@ def create_http_client(mlflow_client, model_name=None):
     from mlflow_export_import.common import model_utils
     creds = mlflow_client._tracking_client.store.get_host_creds()
     if model_name and model_utils.is_unity_catalog_model(model_name):
-        return HttpClient("api/2.0/mlflow/unity-catalog", creds.host, creds.token)
+        return HttpClient("api/2.0/mlflow/unity-catalog", host_creds=creds)
     else:
-        return MlflowHttpClient(creds.host, creds.token)
+        return MlflowHttpClient(host_creds=creds)
 
 
 def create_dbx_client(mlflow_client):
@@ -22,7 +22,7 @@ def create_dbx_client(mlflow_client):
     """
     try:
         creds = mlflow_client._tracking_client.store.get_host_creds()
-        return DatabricksHttpClient(creds.host, creds.token)
+        return DatabricksHttpClient(host_creds=creds)
     except AttributeError:
         # FileStore or other non-Databricks backend - return None
         return None

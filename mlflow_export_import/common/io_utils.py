@@ -1,6 +1,7 @@
 import os
 import getpass
 import json
+import tempfile
 import yaml
 
 from mlflow_export_import.common.timestamp_utils import ts_now_seconds, ts_now_fmt_utc
@@ -67,8 +68,23 @@ def write_file(path, content, file_type=None):
     """
     path = _fs.mk_local_path(path)
     if path.endswith(".json"):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(json.dumps(content, indent=2)+"\n")
+        serialized = json.dumps(content, indent=2)+"\n"
+        directory = os.path.dirname(path) or "."
+        fd, temporary_path = tempfile.mkstemp(dir=directory)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(serialized)
+                f.flush()
+                os.fsync(f.fileno())
+            if os.path.exists(path):
+                os.chmod(temporary_path, os.stat(path).st_mode)
+            else:
+                os.chmod(temporary_path, 0o644)
+            os.replace(temporary_path, path)
+        except Exception:
+            if os.path.exists(temporary_path):
+                os.unlink(temporary_path)
+            raise
     elif _is_yaml(path, file_type):
         with open(path, "w", encoding="utf-8") as f:
             yaml.dump(content, f)

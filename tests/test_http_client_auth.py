@@ -1,0 +1,84 @@
+import json
+from types import SimpleNamespace
+
+import pytest
+
+from mlflow.utils import rest_utils
+
+from mlflow_export_import.client import client_utils
+from mlflow_export_import.client import http_client as http_client_module
+
+
+class _Response:
+    status_code = 200
+    url = "https://workspace.example/api/2.0/test"
+    text = json.dumps({"result": "ok"})
+
+
+def _mlflow_client_with_sdk_credentials():
+    credentials = SimpleNamespace(
+        host="https://workspace.example",
+        token=None,
+        use_databricks_sdk=True,
+        use_secret_scope_token=False,
+        databricks_auth_profile="oauth-profile",
+    )
+    store = SimpleNamespace(get_host_creds=lambda: credentials)
+    tracking_client = SimpleNamespace(store=store)
+    return SimpleNamespace(_tracking_client=tracking_client)
+
+
+@pytest.mark.parametrize(
+    ("make_client", "method", "resource", "payload", "expected_endpoint"),
+    [
+        (
+            lambda client: client_utils.create_http_client(
+                client, "catalog.schema.model"
+            ),
+            "get",
+            "registered-models/get",
+            {"name": "catalog.schema.model"},
+            "/api/2.0/mlflow/unity-catalog/registered-models/get",
+        ),
+        (
+            client_utils.create_dbx_client,
+            "post",
+            "workspace/mkdirs",
+            {"path": "/Users/test/experiment"},
+            "/api/2.0/workspace/mkdirs",
+        ),
+    ],
+)
+def test_clients_preserve_mlflow_sdk_authentication(
+    monkeypatch, make_client, method, resource, payload, expected_endpoint
+):
+    calls = []
+
+    def http_request(host_creds, endpoint, request_method, **kwargs):
+        calls.append((host_creds, endpoint, request_method, kwargs))
+        return _Response()
+
+    monkeypatch.setattr(rest_utils, "http_request", http_request)
+    monkeypatch.setattr(
+        http_client_module.requests,
+        method,
+        lambda *args, **kwargs: pytest.fail(
+            "SDK-backed credentials must not use the unauthenticated requests transport"
+        ),
+    )
+
+    mlflow_client = _mlflow_client_with_sdk_credentials()
+    client = make_client(mlflow_client)
+    result = getattr(client, method)(resource, payload)
+
+    assert result == {"result": "ok"}
+    assert len(calls) == 1
+    host_creds, endpoint, request_method, kwargs = calls[0]
+    assert host_creds.databricks_auth_profile == "oauth-profile"
+    assert endpoint == expected_endpoint
+    assert request_method == method.upper()
+    assert "extra_headers" not in kwargs
+    if method == "get":
+        assert kwargs["params"] == payload
+    else:
+        assert kwargs["json"] == payload

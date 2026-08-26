@@ -34,8 +34,11 @@ def import_run(
         dst_notebook_dir = None,
         use_src_user_id = False,
         mlmodel_fix = True,
-        import_logged_models = False,
-        mlflow_client = None
+        import_logged_models = True,
+        mlflow_client = None,
+        logged_model_id_map = None,
+        is_databricks = None,
+        restore_run_lifecycle = True
     ):
     """
     Imports a run into the specified experiment.
@@ -51,6 +54,10 @@ def import_run(
     :param dst_notebook_dir: Databricks destination workspace directory for notebook import.
     :param import_logged_models: Import logged models into destination object.
     :param mlflow_client: MLflow client.
+    :param logged_model_id_map: Optional dictionary populated with source-to-destination logged model IDs.
+    :param is_databricks: Explicit destination type override. If None, detect using the destination client.
+    :param restore_run_lifecycle: Restore a deleted source run after all run-level imports finish.
+                                  Orchestrators that attach related objects later can defer this step.
     :return: The run and its parent run ID if the run is a nested run.
     """
 
@@ -62,12 +69,23 @@ def import_run(
     }
 
     mlflow_client = mlflow_client or create_mlflow_client()
+    logged_model_id_map = logged_model_id_map if logged_model_id_map is not None else {}
     http_client = create_http_client(mlflow_client)
     dbx_client = create_dbx_client(mlflow_client)
+    is_databricks = (
+        utils.calling_databricks(dbx_client)
+        if is_databricks is None
+        else is_databricks
+    )
 
     _logger.info(f"Importing run from '{input_dir}'")
 
-    exp = mlflow_utils.set_experiment(mlflow_client, dbx_client, experiment_name)
+    exp = mlflow_utils.set_experiment(
+        mlflow_client,
+        dbx_client,
+        experiment_name,
+        is_databricks=is_databricks,
+    )
     src_run_path = os.path.join(input_dir, "run.json")
     src_run_dct = io_utils.read_file_mlflow(src_run_path)
     in_databricks = "DATABRICKS_RUNTIME_VERSION" in os.environ
@@ -82,7 +100,9 @@ def import_run(
             import_source_tags,
             src_run_dct["info"]["user_id"],
             use_src_user_id,
-            in_databricks
+            in_databricks,
+            dbx_client,
+            is_databricks
         )
         _import_inputs(mlflow_client, src_run_dct, run_id)
 
@@ -94,18 +114,19 @@ def import_run(
 
         if "model_inputs" in src_run_dct["inputs"] and import_logged_models:
             for model in src_run_dct["inputs"]["model_inputs"]:
-                import_logged_model(
+                logged_model = import_logged_model(
                     input_dir = os.path.join(input_dir, model['model_id']),
                     experiment_name = experiment_name,
-                    run_id = run.info_run_id,
+                    run_id = run.info.run_id,
                     mlflow_client = mlflow_client,
                     model_type = "input",
                     step = model["step"],
                 )
+                logged_model_id_map[model["model_id"]] = logged_model.model_id
 
         if "outputs" in src_run_dct and import_logged_models:
             for model in src_run_dct["outputs"]["model_outputs"]:
-                import_logged_model(
+                logged_model = import_logged_model(
                     input_dir = os.path.join(input_dir, model['model_id']),
                     experiment_name = experiment_name,
                     run_id = run.info.run_id,
@@ -113,10 +134,11 @@ def import_run(
                     model_type="output",
                     step=model["step"],
                 )
+                logged_model_id_map[model["model_id"]] = logged_model.model_id
         default_status = RunStatus.to_string(RunStatus.FINISHED)
         mlflow_client.set_terminated(run_id, src_run_dct.get("info", default_status).get("status", default_status))
         run = mlflow_client.get_run(run_id)
-        if src_run_dct["info"]["lifecycle_stage"] == LifecycleStage.DELETED:
+        if restore_run_lifecycle and src_run_dct["info"]["lifecycle_stage"] == LifecycleStage.DELETED:
             mlflow_client.delete_run(run.info.run_id)
             run = mlflow_client.get_run(run.info.run_id)
     except Exception as e:
@@ -125,7 +147,7 @@ def import_run(
         traceback.print_exc()
         raise MlflowExportImportException(e, f"Importing run {run_id} of experiment '{exp.name}' failed")
 
-    if utils.calling_databricks() and dst_notebook_dir:
+    if is_databricks and dst_notebook_dir:
         _upload_databricks_notebook(dbx_client, input_dir, src_run_dct, dst_notebook_dir)
 
     res = (run, src_run_dct["tags"].get(MLFLOW_PARENT_RUN_ID, None))

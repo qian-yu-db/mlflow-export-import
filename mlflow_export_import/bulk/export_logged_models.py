@@ -62,7 +62,8 @@ def export_logged_models(
 
     if logged_models_filter:
         logged_models = [logged_model for logged_model in logged_models
-                         if logged_model.source_run_id in logged_models_filter.get(str(logged_model.experiment_id), [])]
+                         if logged_model.source_run_id is None or
+                         logged_model.source_run_id in logged_models_filter.get(str(logged_model.experiment_id), [])]
 
     table_data = [ logged_model.name for logged_model in logged_models ]
     columns = ["Logged Model Name"]

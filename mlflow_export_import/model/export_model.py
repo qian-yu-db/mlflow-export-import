@@ -150,7 +150,8 @@ def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, fai
             export_deleted_runs = opts.export_deleted_runs,
             notebook_formats = opts.notebook_formats,
             mlflow_client = mlflow_client,
-            raise_exception = True
+            raise_exception = True,
+            export_logged_models = "models" not in vr.source
         )
 
         if "models" in vr.source:
