@@ -157,6 +157,8 @@ class HttpClient(BaseHttpClient):
 
 
     def _delete(self, resource):
+        if self.host_creds is not None:
+            return self._mlflow_request("DELETE", resource)
         uri = self._mk_uri(resource)
         rsp = requests.delete(uri, headers=self._mk_headers(), timeout=_TIMEOUT)
         return self._check_response(rsp)

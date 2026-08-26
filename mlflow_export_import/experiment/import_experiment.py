@@ -110,7 +110,6 @@ def import_experiment(
                     run_id = dst_run_id,
                     mlflow_client = mlflow_client,
                     model_type = "input",
-                    step = model['step'],
                 )
                 imported_logged_models.append(model['model_id'])
 

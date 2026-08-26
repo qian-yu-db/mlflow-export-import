@@ -80,6 +80,7 @@ def export_experiment(
     _logger.info(f"Exporting experiment: {msg}")
     ok_run_ids = []
     failed_run_ids = []
+    referenced_logged_model_ids = set()
     num_runs_exported = 0
     if run_ids:
         runs = _get_runs(mlflow_client, run_ids, exp, failed_run_ids)
@@ -103,8 +104,13 @@ def export_experiment(
         runs = SearchRunsIterator(mlflow_client, exp.experiment_id, **kwargs)
 
     for run in runs:
+        num_ok_runs = len(ok_run_ids)
         _export_run(mlflow_client, run, output_dir, ok_run_ids, failed_run_ids,
             run_start_time, run_start_time_str, runs_until, runs_until_str, export_deleted_runs, notebook_formats)
+        if len(ok_run_ids) > num_ok_runs:
+            referenced_logged_model_ids.update(
+                _get_referenced_logged_model_ids(run)
+            )
         num_runs_exported += 1
 
     info_attr = {
@@ -135,6 +141,7 @@ def export_experiment(
             experiment_ids = [exp.experiment_id],
             output_dir = os.path.join(output_dir, "logged_models"),
             logged_models_filter = effective_logged_models_filter,
+            logged_model_ids = referenced_logged_model_ids,
             mlflow_client = mlflow_client,
         )
         info_attr["ok_logged_models"] = len(ok_logged_models)
@@ -165,6 +172,16 @@ def export_experiment(
         _logger.info(f"{len(ok_run_ids)}/{num_runs_exported} runs succesfully exported {msg}")
         _logger.info(f"{len(failed_run_ids)}/{num_runs_exported} runs failed {msg}")
     return len(ok_run_ids), len(failed_run_ids)
+
+
+def _get_referenced_logged_model_ids(run):
+    inputs = getattr(getattr(run, "inputs", None), "model_inputs", []) or []
+    outputs = getattr(getattr(run, "outputs", None), "model_outputs", []) or []
+    return {
+        model.model_id
+        for model in [*inputs, *outputs]
+        if getattr(model, "model_id", None)
+    }
 
 
 def _export_run(mlflow_client, run, output_dir,

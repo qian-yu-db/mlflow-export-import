@@ -110,3 +110,32 @@ def test_sdk_http_errors_use_package_exception_contract(monkeypatch):
         client.get("clusters/list-node-types")
 
     assert exc_info.value.http_status_code == 404
+
+
+def test_delete_preserves_mlflow_sdk_authentication(monkeypatch):
+    calls = []
+
+    def http_request(host_creds, endpoint, request_method, **kwargs):
+        calls.append((host_creds, endpoint, request_method, kwargs))
+        return _Response()
+
+    monkeypatch.setattr(rest_utils, "http_request", http_request)
+    monkeypatch.setattr(
+        http_client_module.requests,
+        "delete",
+        lambda *args, **kwargs: pytest.fail(
+            "SDK-backed credentials must not use the unauthenticated requests transport"
+        ),
+    )
+    client = client_utils.create_dbx_client(_mlflow_client_with_sdk_credentials())
+
+    result = client.delete("workspace/delete")
+
+    assert result == {"result": "ok"}
+    assert len(calls) == 1
+    host_creds, endpoint, request_method, kwargs = calls[0]
+    assert host_creds.databricks_auth_profile == "oauth-profile"
+    assert endpoint == "/api/2.0/workspace/delete"
+    assert request_method == "DELETE"
+    assert "params" not in kwargs
+    assert "json" not in kwargs

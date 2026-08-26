@@ -114,6 +114,8 @@ def import_run(
 
         if "model_inputs" in src_run_dct["inputs"] and import_logged_models:
             for model in src_run_dct["inputs"]["model_inputs"]:
+                if not _has_logged_model_payload(input_dir, model["model_id"]):
+                    continue
                 logged_model = import_logged_model(
                     input_dir = os.path.join(input_dir, model['model_id']),
                     experiment_name = experiment_name,
@@ -125,6 +127,8 @@ def import_run(
 
         if "outputs" in src_run_dct and import_logged_models:
             for model in src_run_dct["outputs"]["model_outputs"]:
+                if not _has_logged_model_payload(input_dir, model["model_id"]):
+                    continue
                 logged_model = import_logged_model(
                     input_dir = os.path.join(input_dir, model['model_id']),
                     experiment_name = experiment_name,
@@ -152,6 +156,18 @@ def import_run(
     res = (run, src_run_dct["tags"].get(MLFLOW_PARENT_RUN_ID, None))
     _logger.info(f"Imported run '{run.info.run_id}' into experiment '{experiment_name}'")
     return res
+
+
+def _has_logged_model_payload(input_dir, model_id):
+    path = _fs.mk_local_path(
+        os.path.join(input_dir, model_id, "logged_model.json")
+    )
+    if os.path.exists(path):
+        return True
+    _logger.warning(
+        f"Skipping logged model '{model_id}' because its export payload is missing"
+    )
+    return False
 
 
 def _upload_databricks_notebook(dbx_client, input_dir, src_run_dct, dst_notebook_dir):

@@ -68,6 +68,12 @@ def _write_run_export(
     (tmp_path / "run.json").write_text(json.dumps(exported), encoding="utf-8")
 
 
+def _write_logged_model_payload(tmp_path, model_id):
+    model_dir = tmp_path / model_id
+    model_dir.mkdir()
+    (model_dir / "logged_model.json").write_text("{}", encoding="utf-8")
+
+
 def _configure_run_import(monkeypatch, client):
     monkeypatch.setattr(import_run_module, "create_http_client", lambda mlflow_client: None)
     monkeypatch.setattr(import_run_module, "create_dbx_client", lambda mlflow_client: None)
@@ -96,6 +102,7 @@ def test_import_run_imports_logged_model_outputs_by_default(tmp_path, monkeypatc
         tmp_path,
         model_outputs=[{"model_id": "source-model", "step": 0}],
     )
+    _write_logged_model_payload(tmp_path, "source-model")
     client = _RunClient()
     _configure_run_import(monkeypatch, client)
 
@@ -115,6 +122,7 @@ def test_import_run_records_destination_logged_model_ids(tmp_path, monkeypatch):
         tmp_path,
         model_outputs=[{"model_id": "source-model", "step": 0}],
     )
+    _write_logged_model_payload(tmp_path, "source-model")
     client = _RunClient()
     _configure_run_import(monkeypatch, client)
     logged_model_id_map = {}
@@ -134,6 +142,7 @@ def test_import_run_uses_destination_run_id_for_logged_model_inputs(tmp_path, mo
         tmp_path,
         model_inputs=[{"model_id": "source-input-model"}],
     )
+    _write_logged_model_payload(tmp_path, "source-input-model")
     client = _RunClient()
     _configure_run_import(monkeypatch, client)
     logged_model_id_map = {}
@@ -148,6 +157,35 @@ def test_import_run_uses_destination_run_id_for_logged_model_inputs(tmp_path, mo
     assert logged_model_id_map == {
         "source-input-model": "destination-source-input-model"
     }
+
+
+def test_import_run_skips_references_without_logged_model_payloads(
+    tmp_path, monkeypatch
+):
+    _write_run_export(
+        tmp_path,
+        model_inputs=[{"model_id": "missing-input-model"}],
+        model_outputs=[{"model_id": "missing-output-model", "step": 0}],
+    )
+    client = _RunClient()
+    _configure_run_import(monkeypatch, client)
+
+    def import_logged_model(*, input_dir, **kwargs):
+        with open(f"{input_dir}/logged_model.json", encoding="utf-8"):
+            pytest.fail("the fixture intentionally has no logged-model payload")
+
+    monkeypatch.setattr(import_run_module, "import_logged_model", import_logged_model)
+    logged_model_id_map = {}
+
+    imported_run, _ = import_run_module.import_run(
+        input_dir=str(tmp_path),
+        experiment_name="destination-experiment",
+        mlflow_client=client,
+        logged_model_id_map=logged_model_id_map,
+    )
+
+    assert imported_run.info.run_id == "destination-run"
+    assert logged_model_id_map == {}
 
 
 def test_import_logged_model_uses_input_entity_without_step(tmp_path, monkeypatch):
@@ -304,6 +342,64 @@ def test_import_experiment_imports_each_logged_model_once(tmp_path, monkeypatch)
     )
 
     assert import_counts == {"source-model": 1}
+
+
+def test_import_experiment_imports_model_inputs_without_step(tmp_path, monkeypatch):
+    run_dir = tmp_path / "runs" / "consumer-run"
+    run_dir.mkdir(parents=True)
+    (tmp_path / "experiment.json").write_text(
+        json.dumps(
+            {
+                "info": {"failed_runs": []},
+                "mlflow": {
+                    "experiment": {"tags": {}},
+                    "runs": ["consumer-run"],
+                    "logged_models": ["source-model"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_run_export(
+        run_dir,
+        model_inputs=[{"model_id": "source-model"}],
+    )
+    model_dir = tmp_path / "logged_models" / "source-model"
+    model_dir.mkdir(parents=True)
+    (model_dir / "logged_model.json").write_text("{}", encoding="utf-8")
+    imports = []
+
+    monkeypatch.setattr(import_experiment_module, "create_dbx_client", lambda client: None)
+    monkeypatch.setattr(
+        import_experiment_module.mlflow_utils,
+        "set_experiment",
+        lambda *args: SimpleNamespace(name="destination", experiment_id="1"),
+    )
+    monkeypatch.setattr(
+        import_experiment_module,
+        "import_run",
+        lambda **kwargs: (
+            SimpleNamespace(info=SimpleNamespace(run_id="destination-run")),
+            None,
+        ),
+    )
+    monkeypatch.setattr(
+        import_experiment_module,
+        "import_logged_model",
+        lambda **kwargs: imports.append(kwargs),
+    )
+    monkeypatch.setattr(import_experiment_module.utils, "nested_tags", lambda *args: None)
+
+    import_experiment_module.import_experiment(
+        experiment_name="destination",
+        input_dir=str(tmp_path),
+        mlflow_client=SimpleNamespace(set_terminated=lambda *args: None),
+    )
+
+    assert len(imports) == 1
+    assert imports[0]["model_type"] == "input"
+    assert imports[0]["input_dir"] == str(model_dir)
+    assert "step" not in imports[0]
 
 
 def test_import_experiment_restores_deleted_lifecycle_after_logged_models(
@@ -635,6 +731,98 @@ def test_export_experiment_filters_logged_models_to_exported_runs(
     assert captured["logged_models_filter"] == {
         "source-experiment": ["source-run"]
     }
+
+
+def test_partial_experiment_export_includes_referenced_input_model(
+    tmp_path, monkeypatch
+):
+    consumer_run = SimpleNamespace(
+        info=SimpleNamespace(
+            run_id="consumer-run",
+            experiment_id="source-experiment",
+            lifecycle_stage="active",
+            start_time=1,
+        ),
+        inputs=SimpleNamespace(
+            model_inputs=[SimpleNamespace(model_id="referenced-model")]
+        ),
+        outputs=SimpleNamespace(model_outputs=[]),
+    )
+    experiment = Experiment(
+        name="source-experiment",
+        experiment_id="source-experiment",
+        artifact_location="source-artifacts",
+        lifecycle_stage="active",
+        creation_time=1,
+        last_update_time=2,
+        tags=[],
+    )
+    referenced_model = SimpleNamespace(
+        model_id="referenced-model",
+        name="referenced",
+        experiment_id="producer-experiment",
+        source_run_id="producer-run",
+    )
+    unrelated_model = SimpleNamespace(
+        model_id="unrelated-model",
+        name="unrelated",
+        experiment_id="source-experiment",
+        source_run_id="other-run",
+    )
+
+    monkeypatch.setattr(export_experiment_module, "create_dbx_client", lambda client: None)
+    monkeypatch.setattr(
+        export_experiment_module.mlflow_utils,
+        "get_experiment",
+        lambda *args: experiment,
+    )
+    monkeypatch.setattr(
+        export_experiment_module,
+        "SearchRunsIterator",
+        lambda *args, **kwargs: [consumer_run],
+    )
+    monkeypatch.setattr(
+        export_experiment_module,
+        "export_run",
+        lambda *args, **kwargs: consumer_run,
+    )
+    monkeypatch.setattr(export_experiment_module, "has_logged_model_support", lambda: True)
+    monkeypatch.setattr(export_experiment_module, "has_trace_support", lambda: False)
+    monkeypatch.setattr(export_logged_models_module, "has_logged_model_support", lambda: True)
+    monkeypatch.setattr(
+        export_logged_models_module,
+        "get_logged_models",
+        lambda *args: [unrelated_model],
+    )
+    monkeypatch.setattr(export_logged_models_module.utils, "show_table", lambda *args: None)
+
+    def export_logged_model(logged_model, output_dir, client, ok, failed):
+        model_dir = tmp_path / "logged_models" / logged_model.model_id
+        model_dir.mkdir(parents=True)
+        (model_dir / "logged_model.json").write_text("{}", encoding="utf-8")
+        ok.append(logged_model.model_id)
+
+    monkeypatch.setattr(
+        export_logged_models_module, "_export_logged_model", export_logged_model
+    )
+
+    export_experiment_module.export_experiment(
+        experiment_id_or_name="source-experiment",
+        output_dir=str(tmp_path),
+        run_ids=["consumer-run"],
+        mlflow_client=SimpleNamespace(
+            get_run=lambda run_id: consumer_run,
+            get_logged_model=lambda model_id: referenced_model,
+            get_experiment=lambda experiment_id: SimpleNamespace(
+                name=str(experiment_id)
+            ),
+        ),
+    )
+
+    assert (
+        tmp_path / "logged_models" / "referenced-model" / "logged_model.json"
+    ).exists()
+    assert not (tmp_path / "logged_models" / "unrelated-model").exists()
 
 
 def test_run_scoped_logged_model_export_keeps_standalone_models(
