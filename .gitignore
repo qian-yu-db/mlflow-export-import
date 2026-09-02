@@ -1,3 +1,6 @@
 __pycache__/
+.venv/
+*.egg-info/
+scripts/*.log
 my_notes/
 AGENTS.md
