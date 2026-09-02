@@ -1,0 +1,302 @@
+
+> TEST_ID=$(date +%Y%m%d_%H%M%S)
+> ./scripts/test_model_migration.sh \
+    --source-profile fevm-classic-stable \
+    --destination-profile fe-sandbox-tech-summit \
+    --source-model fins_genai.classic_ml.advanced_mlops_churn \
+    --source-version 5 \
+    --destination-model tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn_${TEST_ID} \
+    --destination-experiment /Workspace/Users/q.yu@databricks.com/mlflow_experiments/advanced_mlops_churn_${TEST_ID}
+
+[1/6] Checking source and destination authentication
+[2/6] Confirming the destination model name is unused
+[3/6] Exporting source model version 5
+2026-09-02 13:02:23,105 - INFO - Reading log config file '/var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/info-logging.yaml'
+2026-09-02 13:02:23,111 - INFO - Options:
+2026-09-02 13:02:23,111 - INFO -   model: fins_genai.classic_ml.advanced_mlops_churn
+2026-09-02 13:02:23,111 - INFO -   output_dir: /var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/export
+2026-09-02 13:02:23,111 - INFO -   stages: None
+2026-09-02 13:02:23,111 - INFO -   versions: 5
+2026-09-02 13:02:23,111 - INFO -   export_latest_versions: False
+2026-09-02 13:02:23,111 - INFO -   export_deleted_runs: False
+2026-09-02 13:02:23,111 - INFO -   export_version_model: False
+2026-09-02 13:02:23,111 - INFO -   export_permissions: False
+2026-09-02 13:02:23,111 - INFO -   notebook_formats:
+2026-09-02 13:02:23,690 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:24,810 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:24,829 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:25,665 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:26,977 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:27,794 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:28,169 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:28,964 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:29,523 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:30,305 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:30,648 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:31,434 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:31,772 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:32,617 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:33,029 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:33,896 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:34,068 - INFO - Exporting model 'fins_genai.classic_ml.advanced_mlops_churn': found 5 'all' versions
+2026-09-02 13:02:34,070 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:34,830 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:34,834 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:35,698 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:35,703 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:36,516 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:37,278 - INFO - Exporting model verson 1/5: {'name': 'fins_genai.classic_ml.advanced_mlops_churn', 'version': '5', 'stage': None, 'aliases': ['challenger', 'champion']} to '/var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/export/3d7833d8c9c84237b51c44c144c3e528'
+2026-09-02 13:02:37,279 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:38,125 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:38,128 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:38,905 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:40,229 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:41,026 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:41,177 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:41,983 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:42,108 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:42,840 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:42,982 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:43,838 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:43,980 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:44,812 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:44,944 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:45,745 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:45,879 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:46,651 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:46,782 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:47,562 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:47,694 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:48,552 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:48,685 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:49,463 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:49,604 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:50,353 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:50,499 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:51,215 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:51,371 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:52,161 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:52,290 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:53,125 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:53,263 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:54,031 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:54,156 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:54,965 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:55,088 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:55,844 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:55,984 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:56,849 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:56,994 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:57,784 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:57,919 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:58,744 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:58,884 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:02:59,673 - INFO - Using Databricks CLI authentication
+2026-09-02 13:02:59,814 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:00,525 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:00,657 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:01,446 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:01,575 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:02,349 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:02,495 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:03,276 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:03,411 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:04,190 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:04,321 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:05,092 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:05,224 - INFO - Exporting run: {'run_id': '3d7833d8c9c84237b51c44c144c3e528', 'lifecycle_stage': 'active', 'experiment_id': '2614090936206229'}
+2026-09-02 13:03:05,225 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:06,017 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:06,186 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:07,043 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:08,092 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:08,895 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:09,065 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:09,818 - INFO - Using Databricks CLI authentication
+Downloading artifacts: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 13/13 [00:02<00:00,  6.13it/s]
+2026-09-02 13:03:13,889 - INFO - Exported run in 35.8s: {'run_id': '3d7833d8c9c84237b51c44c144c3e528', 'lifecycle_stage': 'active', 'experiment_id': '2614090936206229'}
+2026-09-02 13:03:13,891 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:14,677 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:14,825 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:15,581 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:16,573 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:17,432 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:17,580 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:18,360 - INFO - Using Databricks CLI authentication
+Downloading artifacts: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 14/14 [00:00<00:00, 24.93it/s]
+2026-09-02 13:03:23,454 - INFO - Exported logged model in 9.6s: {'model_id': 'm-34f1b44f52a1427e9ac86bf71acc9eda', 'name': 'model', 'experiment_id': '2614090936206229'}
+2026-09-02 13:03:23,455 - INFO - loading fevm-classic-stable profile from ~/.databrickscfg: host, serverless_compute_id, connection_timeout_seconds, account_id, workspace_id, auth_type
+2026-09-02 13:03:24,226 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:24,399 - INFO - Exported 1/5 'all' versions for model 'fins_genai.classic_ml.advanced_mlops_churn'
+[4/6] Importing and registering the destination model
+2026-09-02 13:03:25,933 - INFO - Reading log config file '/var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/info-logging.yaml'
+2026-09-02 13:03:25,942 - INFO - Options:
+2026-09-02 13:03:25,942 - INFO -   input_dir: /var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/export
+2026-09-02 13:03:25,942 - INFO -   model: tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn_20260902_130215
+2026-09-02 13:03:25,942 - INFO -   experiment_name: /Workspace/Users/q.yu@databricks.com/mlflow_experiments/advanced_mlops_churn_20260902_130215
+2026-09-02 13:03:25,942 - INFO -   delete_model: False
+2026-09-02 13:03:25,942 - INFO -   import_permissions: False
+2026-09-02 13:03:25,942 - INFO -   import_source_tags: False
+2026-09-02 13:03:25,942 - INFO -   await_creation_for: 600
+2026-09-02 13:03:25,942 - INFO -   verbose: False
+2026-09-02 13:03:26,403 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:27,188 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:27,190 - INFO - Model to import:
+2026-09-02 13:03:27,190 - INFO -   Name: fins_genai.classic_ml.advanced_mlops_churn
+2026-09-02 13:03:27,190 - INFO -   Description: This model predicts whether a customer will churn using the features in the mlops_churn_training table. It is used to power the Telco Churn Dashboard in DB SQL.
+2026-09-02 13:03:27,190 - INFO -   Tags:
+2026-09-02 13:03:27,190 - INFO -   1 versions
+2026-09-02 13:03:27,190 - INFO -   path: /var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/export/model.json
+2026-09-02 13:03:27,244 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:27,769 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:27,783 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:28,372 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:28,922 - INFO - Created new registered model 'tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn_20260902_130215'
+2026-09-02 13:03:28,922 - INFO - Importing versions:
+2026-09-02 13:03:28,922 - INFO -   Version 5:
+2026-09-02 13:03:28,922 - INFO -     current_stage: None:
+2026-09-02 13:03:28,922 - INFO -     Source run - run to import:
+2026-09-02 13:03:28,922 - INFO -       run_id:           3d7833d8c9c84237b51c44c144c3e528
+2026-09-02 13:03:28,922 - INFO -       run_artifact_uri: dbfs:/databricks/mlflow-tracking/2614090936206229/3d7833d8c9c84237b51c44c144c3e528/artifacts
+2026-09-02 13:03:28,922 - INFO -       source:           models:/m-34f1b44f52a1427e9ac86bf71acc9eda
+2026-09-02 13:03:28,923 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:29,445 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:29,447 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:30,088 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:30,093 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:30,692 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:31,172 - INFO - Calling Databricks at 'https://fe-sandbox-tech-summit-qyu.cloud.databricks.com/api/2.0': True
+2026-09-02 13:03:31,172 - INFO - Importing run from '/var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/export/3d7833d8c9c84237b51c44c144c3e528'
+2026-09-02 13:03:31,172 - INFO - Creating Databricks workspace directory '/Workspace/Users/q.yu@databricks.com/mlflow_experiments'
+2026-09-02 13:03:31,903 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:32,496 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:32,708 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:33,317 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:33,462 - INFO - Created experiment '/Users/q.yu@databricks.com/mlflow_experiments/advanced_mlops_churn_20260902_130215' with location 'dbfs:/databricks/mlflow-tracking/760653346352763'
+2026-09-02 13:03:33,464 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:34,084 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:34,329 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:34,915 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:35,140 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:35,784 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:35,936 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:36,505 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:36,688 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:37,265 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:37,413 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:38,035 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:38,174 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:38,764 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:38,898 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:39,461 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:41,206 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:41,763 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:41,879 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:42,480 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:43,231 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:44,021 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:44,026 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:44,597 - INFO - Using Databricks CLI authentication
+🏃 View run mlops-hpo-best-run at: https://fe-sandbox-tech-summit-qyu.cloud.databricks.com/ml/experiments/760653346352763/runs/c221bef007964b75a37876c30c30024c
+🧪 View experiment at: https://fe-sandbox-tech-summit-qyu.cloud.databricks.com/ml/experiments/760653346352763
+2026-09-02 13:03:44,704 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:45,320 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:45,441 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:45,984 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:46,110 - INFO - Imported run 'c221bef007964b75a37876c30c30024c' into experiment '/Workspace/Users/q.yu@databricks.com/mlflow_experiments/advanced_mlops_churn_20260902_130215'
+2026-09-02 13:03:46,113 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:46,681 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:46,789 - INFO - Importing logged model from '/var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d/export/m-34f1b44f52a1427e9ac86bf71acc9eda'
+2026-09-02 13:03:46,790 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:47,358 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:47,360 - INFO - Calling Databricks at 'https://fe-sandbox-tech-summit-qyu.cloud.databricks.com/api/2.0': True
+2026-09-02 13:03:47,360 - INFO - Creating Databricks workspace directory '/Workspace/Users/q.yu@databricks.com/mlflow_experiments'
+2026-09-02 13:03:47,472 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:48,083 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:48,229 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:48,795 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:48,902 - INFO - Created experiment '/Users/q.yu@databricks.com/mlflow_experiments/advanced_mlops_churn_20260902_130215' with location 'dbfs:/databricks/mlflow-tracking/760653346352763'
+2026-09-02 13:03:48,907 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:49,481 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:49,690 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:50,257 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:50,395 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:50,964 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:51,071 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:51,724 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:51,877 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:52,469 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:52,582 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:53,194 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:53,301 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:53,902 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:56,246 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:56,829 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:56,967 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:57,542 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:57,545 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:58,151 - INFO - Using Databricks CLI authentication
+🏃 View run mlops-hpo-best-run at: https://fe-sandbox-tech-summit-qyu.cloud.databricks.com/ml/experiments/760653346352763/runs/c221bef007964b75a37876c30c30024c
+🧪 View experiment at: https://fe-sandbox-tech-summit-qyu.cloud.databricks.com/ml/experiments/760653346352763
+2026-09-02 13:03:58,263 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:58,854 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:58,984 - INFO - Imported logged model model into experiment /Users/q.yu@databricks.com/mlflow_experiments/advanced_mlops_churn_20260902_130215
+2026-09-02 13:03:58,985 - INFO -     Destination run - imported run:
+2026-09-02 13:03:58,985 - INFO -       run_id: c221bef007964b75a37876c30c30024c
+2026-09-02 13:03:58,985 - INFO -       run_artifact_uri: dbfs:/databricks/mlflow-tracking/760653346352763/c221bef007964b75a37876c30c30024c/artifacts
+2026-09-02 13:03:58,987 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:03:59,582 - INFO - Using Databricks CLI authentication
+2026-09-02 13:03:59,697 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:00,275 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:00,387 - INFO - Importing model version with dst_source = 'dbfs:/databricks/mlflow-tracking/760653346352763/logged_models/m-1694ba147b0a44d1af19d2135fa30dd9/artifacts' for model 'tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn_20260902_130215'
+2026-09-02 13:04:00,389 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:00,983 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:01,099 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:01,703 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:01,813 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:02,407 - INFO - Using Databricks CLI authentication
+Downloading artifacts: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 14/14 [00:00<00:00, 26.89it/s]
+2026-09-02 13:04:07,304 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:07,864 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:08,002 - WARNING - MLflow cannot derive Databricks Feature Store lineage outside a Databricks cluster. Registering the migrated model without UC feature dependency lineage; run the import on a cluster when that lineage must be preserved.
+2026-09-02 13:04:08,003 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:08,587 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:08,703 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:09,238 - INFO - Using Databricks CLI authentication
+Downloading artifacts: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 14/14 [00:00<00:00, 22.87it/s]
+2026-09-02 13:04:13,673 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:14,238 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:14,340 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:14,900 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:15,416 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:16,031 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:16,153 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:16,735 - INFO - Using Databricks CLI authentication
+Uploading artifacts:   0%|                                                                                                             | 0/14 [00:00<?, ?it/s]2026-09-02 13:04:19,282 - WARNING - Connection pool is full, discarding connection: tech-summit-qyu-ext-s3-332745928618-0a1x9n.s3.us-west-2.amazonaws.com. Connection pool size: 10
+Uploading artifacts:  21%|█████████████████████▋                                                                               | 3/14 [00:01<00:16,  1.50s/it]2026-09-02 13:04:19,283 - WARNING - Connection pool is full, discarding connection: tech-summit-qyu-ext-s3-332745928618-0a1x9n.s3.us-west-2.amazonaws.com. Connection pool size: 10
+2026-09-02 13:04:19,283 - WARNING - Connection pool is full, discarding connection: tech-summit-qyu-ext-s3-332745928618-0a1x9n.s3.us-west-2.amazonaws.com. Connection pool size: 10
+Uploading artifacts:  57%|█████████████████████████████████████████████████████████▋                                           | 8/14 [00:01<00:09,  1.50s/it]2026-09-02 13:04:19,647 - WARNING - Connection pool is full, discarding connection: tech-summit-qyu-ext-s3-332745928618-0a1x9n.s3.us-west-2.amazonaws.com. Connection pool size: 10
+Uploading artifacts: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████| 14/14 [00:01<00:00,  7.48it/s]
+2026-09-02 13:04:19,650 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:20,244 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:20,579 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:21,201 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:21,349 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:21,932 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:22,204 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:22,764 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:22,909 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:23,502 - INFO - Using Databricks CLI authentication
+2026-09-02 13:04:23,734 - INFO - Imported model version 'tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn_20260902_130215/1' in 23.3s
+2026-09-02 13:04:23,737 - INFO - loading fe-sandbox-tech-summit profile from ~/.databrickscfg: host, account_id, workspace_id, auth_type
+2026-09-02 13:04:24,322 - INFO - Using Databricks CLI authentication
+[5/6] Verifying destination model version and run
+[6/6] Downloading registered model artifacts
+Downloading artifacts: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 14/14 [00:00<00:00, 37.66it/s]
+
+Migration test passed
+Destination model: tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn_20260902_130215
+Destination version: 1
+Destination run: c221bef007964b75a37876c30c30024c
+Destination source: dbfs:/databricks/mlflow-tracking/760653346352763/logged_models/m-1694ba147b0a44d1af19d2135fa30dd9/artifacts
+Test files: /var/folders/b3/rdsklr3d0s1f_fzq3pg5try40000gp/T//mlflow-model-migration.KFmh9d
