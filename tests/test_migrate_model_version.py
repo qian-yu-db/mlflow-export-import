@@ -11,6 +11,16 @@ migration = importlib.import_module(
 )
 
 
+def test_public_api_is_exported_from_model_version_package():
+    from mlflow_export_import.model_version import (
+        ModelVersionMigrationResult,
+        migrate_model_version,
+    )
+
+    assert migrate_model_version is migration.migrate_model_version
+    assert ModelVersionMigrationResult is migration.ModelVersionMigrationResult
+
+
 def _version(name, version, run_id, status="READY"):
     return SimpleNamespace(
         name=name,
