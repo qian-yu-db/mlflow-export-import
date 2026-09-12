@@ -49,7 +49,8 @@ def import_model_version(
         import_stages_and_aliases = True,
         import_metadata = False,
         model_id = None,
-        mlflow_client = None
+        mlflow_client = None,
+        await_creation_for = None
     ):
     """
     Exports a model version.
@@ -63,6 +64,7 @@ def import_model_version(
     :param import_metadata: Import registered model and experiment metadata.
     :param model_id: logged Model id if applicable. Supported from >=3.0 version
     :param mlflow_client: MlflowClient (optional).
+    :param await_creation_for: Seconds to wait for model version creation.
 
     :return: Returns model version object.
     """
@@ -125,7 +127,8 @@ def import_model_version(
         dst_source = dst_source,
         import_stages_and_aliases = import_stages_and_aliases,
         import_source_tags = import_source_tags,
-        model_id = destination_model_id
+        model_id = destination_model_id,
+        await_creation_for = await_creation_for
     )
     return dst_vr
 
