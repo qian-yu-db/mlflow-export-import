@@ -1,8 +1,10 @@
 import importlib
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import mlflow
 import pytest
 
 
@@ -71,9 +73,11 @@ def successful_migration(monkeypatch):
     def fake_export(**kwargs):
         calls["export"] = kwargs
         root = Path(kwargs["output_dir"])
-        (root / "run").mkdir(parents=True)
+        model_dir = root / "run" / "artifacts" / "model"
+        model_dir.mkdir(parents=True)
         (root / "version.json").write_text("{}", encoding="utf-8")
         (root / "run" / "run.json").write_text("{}", encoding="utf-8")
+        (model_dir / "MLmodel").write_text("flavors: {}", encoding="utf-8")
 
     def fake_import(**kwargs):
         calls["import"] = kwargs
@@ -202,6 +206,74 @@ def test_requires_export_manifests(successful_migration, monkeypatch):
 
     with pytest.raises(RuntimeError, match="version.json"):
         migration.migrate_model_version(**successful_migration.arguments)
+
+
+def test_requires_exported_model_artifact_before_import(
+    successful_migration, monkeypatch
+):
+    def fake_export_without_model(**kwargs):
+        root = Path(kwargs["output_dir"])
+        (root / "run").mkdir(parents=True)
+        (root / "version.json").write_text("{}", encoding="utf-8")
+        (root / "run" / "run.json").write_text("{}", encoding="utf-8")
+        (root / "run" / "artifacts" / "MLmodel").mkdir(parents=True)
+
+    importer = MagicMock()
+    monkeypatch.setattr(migration, "export_model_version", fake_export_without_model)
+    monkeypatch.setattr(migration, "import_model_version", importer)
+
+    with pytest.raises(RuntimeError, match="MLmodel"):
+        migration.migrate_model_version(**successful_migration.arguments)
+
+    importer.assert_not_called()
+
+
+def test_scopes_profiles_and_mlflow_uris_and_restores_them_on_failure(
+    successful_migration, monkeypatch
+):
+    original_tracking_uri = "file:///original-tracking"
+    original_registry_uri = "file:///original-registry"
+    previous_tracking_uri = mlflow.get_tracking_uri()
+    previous_registry_uri = mlflow.get_registry_uri()
+    monkeypatch.setenv("DATABRICKS_CONFIG_PROFILE", "ORIGINAL")
+    mlflow.set_tracking_uri(original_tracking_uri)
+    mlflow.set_registry_uri(original_registry_uri)
+
+    def assert_context(profile):
+        assert os.environ["DATABRICKS_CONFIG_PROFILE"] == profile
+        assert os.environ["MLFLOW_TRACKING_URI"] == f"databricks://{profile}"
+        assert os.environ["MLFLOW_REGISTRY_URI"] == f"databricks-uc://{profile}"
+        assert mlflow.get_tracking_uri() == f"databricks://{profile}"
+        assert mlflow.get_registry_uri() == f"databricks-uc://{profile}"
+
+    def fake_export(**kwargs):
+        assert_context("SRC")
+        root = Path(kwargs["output_dir"])
+        model_dir = root / "run" / "artifacts" / "model"
+        model_dir.mkdir(parents=True)
+        (root / "version.json").write_text("{}", encoding="utf-8")
+        (root / "run" / "run.json").write_text("{}", encoding="utf-8")
+        (model_dir / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+
+    def fail_import(**kwargs):
+        assert_context("DST")
+        raise RuntimeError("registration failed")
+
+    monkeypatch.setattr(migration, "export_model_version", fake_export)
+    monkeypatch.setattr(migration, "import_model_version", fail_import)
+
+    try:
+        with pytest.raises(RuntimeError, match="registration failed"):
+            migration.migrate_model_version(**successful_migration.arguments)
+
+        assert os.environ["DATABRICKS_CONFIG_PROFILE"] == "ORIGINAL"
+        assert os.environ["MLFLOW_TRACKING_URI"] == original_tracking_uri
+        assert os.environ["MLFLOW_REGISTRY_URI"] == original_registry_uri
+        assert mlflow.get_tracking_uri() == original_tracking_uri
+        assert mlflow.get_registry_uri() == original_registry_uri
+    finally:
+        mlflow.set_tracking_uri(previous_tracking_uri)
+        mlflow.set_registry_uri(previous_registry_uri)
 
 
 def test_rejects_non_ready_destination(successful_migration):

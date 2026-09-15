@@ -4,6 +4,9 @@
 imports them into another Databricks workspace, registers the destination model,
 and verifies the destination run and downloadable model artifacts.
 
+For the Python API and `test_targeted_model_version_migration.py`, see
+[Targeted Model Version Migration](README_targeted_model_version_migration.md).
+
 The script creates a registered model and experiment in the destination
 workspace. It does not remove them afterward.
 
