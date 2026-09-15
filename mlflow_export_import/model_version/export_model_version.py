@@ -37,7 +37,8 @@ def export_model_version(
         skip_download_run_artifacts = False,
         export_permissions = False,
         notebook_formats = None,
-        mlflow_client = None
+        mlflow_client = None,
+        raise_exception = False
     ):
     """
     Exports a model version.
@@ -52,6 +53,7 @@ def export_model_version(
     :param export_permissions: Export Databricks permissions.
     :param notebook_formats: List of Databricks notebook formats. Values are SOURCE, HTML, JUPYTER or DBC (comma separated)
     :param mlflow_client: MlflowClient (optional).
+    :param raise_exception: Raise an exception when the backing run or one of its logged models cannot be fully exported.
 
     :return: Returns model version object.
     """
@@ -70,10 +72,13 @@ def export_model_version(
         export_deleted_runs = True, # NOTE: Important since default is not export a deleted run
         skip_download_run_artifacts = skip_download_run_artifacts,
         mlflow_client = mlflow_client,
+        raise_exception = raise_exception,
         export_logged_models = True
     )
     if not run:
         msg = f"Cannot get run ID '{vr.run_id}' of model version '{model_name}/{version}'"
+        if raise_exception:
+            raise RuntimeError(msg)
         _logger.error(f"{msg}")
     else:
         _export_experiment(mlflow_client, run.info.experiment_id, output_dir)

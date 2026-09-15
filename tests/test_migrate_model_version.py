@@ -120,6 +120,7 @@ def test_migrates_one_version_and_retains_requested_bundle(
     ]
     assert calls["export"]["model_name"] == "source.catalog.model"
     assert calls["export"]["version"] == "5"
+    assert calls["export"]["raise_exception"] is True
     assert calls["export"]["mlflow_client"] is successful_migration.source_client
     assert calls["import"]["model_name"] == "destination.catalog.model"
     assert calls["import"]["experiment_name"] == "/Users/test/destination"
@@ -154,6 +155,16 @@ def test_rejects_blank_required_argument(argument):
 
     with pytest.raises(ValueError, match=argument):
         migration.migrate_model_version(**values)
+
+
+@pytest.mark.parametrize("expected_source_run_id", ["", " ", 0])
+def test_rejects_invalid_expected_source_run_id(
+    expected_source_run_id, successful_migration
+):
+    with pytest.raises(ValueError, match="expected_source_run_id"):
+        migration.migrate_model_version(
+            **_arguments(expected_source_run_id=expected_source_run_id)
+        )
 
 
 @pytest.mark.parametrize("timeout", [0, -1, 1.5, True])

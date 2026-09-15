@@ -1,5 +1,6 @@
 import importlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -278,6 +279,7 @@ def test_export_run_exports_logged_model_outputs_by_default(tmp_path, monkeypatc
         model_dir = tmp_path / model_id
         model_dir.mkdir()
         (model_dir / "logged_model.json").write_text("{}", encoding="utf-8")
+        return SimpleNamespace(model_id=model_id)
 
     monkeypatch.setattr(export_run_module, "export_logged_model", export_logged_model)
 
@@ -289,6 +291,33 @@ def test_export_run_exports_logged_model_outputs_by_default(tmp_path, monkeypatc
     )
 
     assert (tmp_path / "source-model" / "logged_model.json").exists()
+
+
+def test_export_run_strict_mode_rejects_partial_logged_model_export(
+    tmp_path, monkeypatch
+):
+    client = _ExportRunClient()
+    monkeypatch.setattr(
+        export_run_module, "create_dbx_client", lambda mlflow_client: None
+    )
+
+    def fail_after_writing_model(model_id, output_dir, mlflow_client):
+        model_dir = Path(output_dir) / "artifacts"
+        model_dir.mkdir(parents=True)
+        (model_dir / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+        return None
+
+    monkeypatch.setattr(
+        export_run_module, "export_logged_model", fail_after_writing_model
+    )
+
+    with pytest.raises(RuntimeError, match="source-model"):
+        export_run_module.export_run(
+            run_id="source-run",
+            output_dir=str(tmp_path),
+            mlflow_client=client,
+            raise_exception=True,
+        )
 
 
 def test_import_experiment_imports_each_logged_model_once(tmp_path, monkeypatch):

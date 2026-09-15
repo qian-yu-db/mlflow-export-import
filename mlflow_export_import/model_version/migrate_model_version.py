@@ -104,7 +104,10 @@ def _migrate_with_clients(
         source_run_id = getattr(source_version, "run_id", None)
         if not source_run_id:
             raise ValueError("The selected source model version has no backing run_id")
-        if expected_source_run_id and expected_source_run_id != source_run_id:
+        if (
+            expected_source_run_id is not None
+            and expected_source_run_id != source_run_id
+        ):
             raise ValueError(
                 "expected_source_run_id does not match the selected model version"
             )
@@ -114,6 +117,7 @@ def _migrate_with_clients(
             model_name=source_model_name,
             version=source_model_version,
             output_dir=str(export_dir),
+            raise_exception=True,
             mlflow_client=source_client,
         )
     for relative_path in ("version.json", "run/run.json"):
@@ -183,6 +187,8 @@ def migrate_model_version(
     }
     for name, value in required_text.items():
         _require_text(name, value)
+    if expected_source_run_id is not None:
+        _require_text("expected_source_run_id", expected_source_run_id)
     if (
         isinstance(await_creation_for, bool)
         or not isinstance(await_creation_for, int)

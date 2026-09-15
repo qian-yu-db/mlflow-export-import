@@ -258,6 +258,38 @@ class _ExportModelVersionClient:
         return self.version
 
 
+def test_export_model_version_forwards_strict_run_export(tmp_path, monkeypatch):
+    client = _ExportModelVersionClient()
+    run = SimpleNamespace(info=SimpleNamespace(experiment_id="source-experiment"))
+    captured = {}
+
+    def export_run(**kwargs):
+        captured.update(kwargs)
+        return run
+
+    monkeypatch.setattr(export_model_version_module, "export_run", export_run)
+    monkeypatch.setattr(
+        export_model_version_module,
+        "_export_registered_model",
+        lambda *args: None,
+    )
+    monkeypatch.setattr(
+        export_model_version_module,
+        "_export_experiment",
+        lambda *args: None,
+    )
+
+    export_model_version_module.export_model_version(
+        model_name="catalog.schema.source_model",
+        version="1",
+        output_dir=str(tmp_path),
+        mlflow_client=client,
+        raise_exception=True,
+    )
+
+    assert captured["raise_exception"] is True
+
+
 def test_export_model_version_keeps_logged_model_inside_run_export(tmp_path, monkeypatch):
     client = _ExportModelVersionClient()
     run = SimpleNamespace(info=SimpleNamespace(experiment_id="source-experiment"))
