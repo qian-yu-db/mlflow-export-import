@@ -89,19 +89,27 @@ def export_run(
 
                 # Export Run model inputs
                 for logged_model in run.inputs.model_inputs:
-                    export_logged_model(
+                    exported_logged_model = export_logged_model(
                         model_id=logged_model.model_id,
                         output_dir=os.path.join(output_dir, logged_model.model_id),
                         mlflow_client=mlflow_client
                     )
+                    if raise_exception and exported_logged_model is None:
+                        raise RuntimeError(
+                            f"Failed to export logged model '{logged_model.model_id}'"
+                        )
 
                 # Export Run model outputs
                 for logged_model in run.outputs.model_outputs:
-                    export_logged_model(
+                    exported_logged_model = export_logged_model(
                         model_id=logged_model.model_id,
                         output_dir=os.path.join(output_dir, logged_model.model_id),
                         mlflow_client=mlflow_client
                     )
+                    if raise_exception and exported_logged_model is None:
+                        raise RuntimeError(
+                            f"Failed to export logged model '{logged_model.model_id}'"
+                        )
 
 
         io_utils.write_export_file(output_dir, "run.json", __file__, mlflow_attr)

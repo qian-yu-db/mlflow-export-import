@@ -84,6 +84,50 @@ def test_import_model_version_uses_destination_logged_model_source(tmp_path, mon
     assert captured["model_id"] == "destination-model"
 
 
+def test_import_model_version_forwards_await_creation_timeout(tmp_path, monkeypatch):
+    version = {
+        "mlflow": {
+            "model_version": {
+                "name": "catalog.schema.source_model",
+                "version": "1",
+                "source": "models:/source-model",
+                "run_id": "source-run",
+                "tags": {},
+                "aliases": [],
+                "current_stage": "None",
+            }
+        }
+    }
+    (tmp_path / "version.json").write_text(json.dumps(version), encoding="utf-8")
+    (tmp_path / "run").mkdir()
+    destination_run = SimpleNamespace(info=SimpleNamespace(run_id="destination-run"))
+    captured = {}
+
+    def fake_import_run(**kwargs):
+        kwargs["logged_model_id_map"]["source-model"] = "destination-model"
+        return destination_run, None
+
+    monkeypatch.setattr(
+        import_model_version_module, "create_dbx_client", lambda client: None
+    )
+    monkeypatch.setattr(import_model_version_module, "import_run", fake_import_run)
+    monkeypatch.setattr(
+        import_model_version_module,
+        "_import_model_version",
+        lambda mlflow_client, **kwargs: captured.update(kwargs) or kwargs,
+    )
+
+    import_model_version_module.import_model_version(
+        model_name="catalog.schema.destination_model",
+        experiment_name="destination-experiment",
+        input_dir=str(tmp_path),
+        await_creation_for=321,
+        mlflow_client=_ModelVersionClient(),
+    )
+
+    assert captured["await_creation_for"] == 321
+
+
 def test_import_model_version_recognizes_logged_model_artifact_location(
     tmp_path, monkeypatch
 ):
@@ -212,6 +256,38 @@ class _ExportModelVersionClient:
 
     def get_model_version(self, model_name, version):
         return self.version
+
+
+def test_export_model_version_forwards_strict_run_export(tmp_path, monkeypatch):
+    client = _ExportModelVersionClient()
+    run = SimpleNamespace(info=SimpleNamespace(experiment_id="source-experiment"))
+    captured = {}
+
+    def export_run(**kwargs):
+        captured.update(kwargs)
+        return run
+
+    monkeypatch.setattr(export_model_version_module, "export_run", export_run)
+    monkeypatch.setattr(
+        export_model_version_module,
+        "_export_registered_model",
+        lambda *args: None,
+    )
+    monkeypatch.setattr(
+        export_model_version_module,
+        "_export_experiment",
+        lambda *args: None,
+    )
+
+    export_model_version_module.export_model_version(
+        model_name="catalog.schema.source_model",
+        version="1",
+        output_dir=str(tmp_path),
+        mlflow_client=client,
+        raise_exception=True,
+    )
+
+    assert captured["raise_exception"] is True
 
 
 def test_export_model_version_keeps_logged_model_inside_run_export(tmp_path, monkeypatch):

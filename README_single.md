@@ -498,7 +498,7 @@ Imports a registered model version and its run.
 Optionally import the registered model and experiment metadata (description and tags) only if they are being created for the first time.
 Will not modify metadata of an existing registered model and experiment.
 
-Source: [import_model_version.py](mlflow_import_import/model_version/import_model_version.py).
+Source: [import_model_version.py](mlflow_export_import/model_version/import_model_version.py).
 
 #### Example
 ```
@@ -536,6 +536,34 @@ Options:
                                   metadata (description and tags).  [default:
                                   False]
 ```
+
+### Targeted Model Version Migration
+
+Use the Python API to migrate exactly one registered model version between
+explicitly selected Databricks workspaces. The selected version determines the
+single backing experiment run to export and import; other runs in that
+experiment are not copied. The destination registered model is created when it
+does not exist, or receives a new version when it does.
+
+```python
+from mlflow_export_import.model_version import migrate_model_version
+
+result = migrate_model_version(
+    source_profile="source-workspace",
+    destination_profile="destination-workspace",
+    source_model_name="source_catalog.models.churn",
+    source_model_version="5",
+    destination_model_name="destination_catalog.models.churn",
+    destination_experiment_name="/Users/me@example.com/model-migrations/churn",
+    expected_source_run_id="run-id-recorded-on-version-5",
+    output_dir="/tmp/churn-version-5",
+)
+print(result.destination_model_version, result.destination_run_id)
+```
+
+`expected_source_run_id` is an optional preflight check. Omit `output_dir` to
+delete the local export bundle automatically after migration. Version aliases
+are not copied by default; pass `copy_aliases=True` to preserve them.
 
 ## Logged Models Tools
 
