@@ -1,6 +1,7 @@
 import importlib
 import os
 from pathlib import Path
+from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -23,12 +24,19 @@ def test_public_api_is_exported_from_model_version_package():
     assert ModelVersionMigrationResult is migration.ModelVersionMigrationResult
 
 
-def _version(name, version, run_id, status="READY"):
+def _version(
+    name,
+    version,
+    run_id,
+    status="READY",
+    source="dbfs:/runs/source-run/artifacts/model",
+):
     return SimpleNamespace(
         name=name,
         version=version,
         run_id=run_id,
         status=status,
+        source=source,
     )
 
 
@@ -53,7 +61,10 @@ def successful_migration(monkeypatch):
         "source.catalog.model", "5", "source-run"
     )
     source.get_run.return_value = SimpleNamespace(
-        info=SimpleNamespace(run_id="source-run")
+        info=SimpleNamespace(
+            run_id="source-run",
+            artifact_uri="dbfs:/runs/source-run/artifacts",
+        )
     )
     imported = _version("destination.catalog.model", "2", "destination-run")
     destination.get_model_version.return_value = imported
@@ -120,6 +131,8 @@ def test_migrates_one_version_and_retains_requested_bundle(
     ]
     assert calls["export"]["model_name"] == "source.catalog.model"
     assert calls["export"]["version"] == "5"
+    assert calls["export"]["export_version_model"] is False
+    assert calls["export"]["vrm_model_artifact_path"] == ""
     assert calls["export"]["raise_exception"] is True
     assert calls["export"]["mlflow_client"] is successful_migration.source_client
     assert calls["import"]["model_name"] == "destination.catalog.model"
@@ -239,6 +252,95 @@ def test_requires_exported_model_artifact_before_import(
     importer.assert_not_called()
 
 
+def test_exports_external_model_payload_into_backing_run_bundle(
+    successful_migration, monkeypatch
+):
+    successful_migration.source_client.get_model_version.return_value = _version(
+        "source.catalog.model",
+        "5",
+        "source-run",
+        source="s3://external-bucket/models/customer-churn",
+    )
+
+    def fake_export(**kwargs):
+        successful_migration.calls["export"] = kwargs
+        root = Path(kwargs["output_dir"])
+        model_dir = (
+            root
+            / "run"
+            / "artifacts"
+            / kwargs["vrm_model_artifact_path"]
+        )
+        assert model_dir.is_dir()
+        (root / "version.json").write_text("{}", encoding="utf-8")
+        (root / "run" / "run.json").write_text("{}", encoding="utf-8")
+        (model_dir / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+
+    monkeypatch.setattr(migration, "export_model_version", fake_export)
+
+    migration.migrate_model_version(**successful_migration.arguments)
+
+    call = successful_migration.calls["export"]
+    assert call["export_version_model"] is True
+    assert call["vrm_model_artifact_path"] == "version_model"
+
+
+def test_unrelated_mlmodel_does_not_satisfy_external_payload_export(
+    successful_migration, monkeypatch
+):
+    successful_migration.source_client.get_model_version.return_value = _version(
+        "source.catalog.model",
+        "5",
+        "source-run",
+        source="dbfs:/external/models/customer-churn",
+    )
+
+    def fake_export(**kwargs):
+        root = Path(kwargs["output_dir"])
+        unrelated = root / "run" / "artifacts" / "unrelated"
+        unrelated.mkdir(parents=True)
+        (root / "version.json").write_text("{}", encoding="utf-8")
+        (root / "run" / "run.json").write_text("{}", encoding="utf-8")
+        (unrelated / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+
+    importer = MagicMock()
+    monkeypatch.setattr(migration, "export_model_version", fake_export)
+    monkeypatch.setattr(migration, "import_model_version", importer)
+
+    with pytest.raises(RuntimeError, match="version_model/MLmodel"):
+        migration.migrate_model_version(**successful_migration.arguments)
+
+    importer.assert_not_called()
+
+
+def test_preserves_logged_model_export_strategy(successful_migration, monkeypatch):
+    successful_migration.source_client.get_model_version.return_value = _version(
+        "source.catalog.model",
+        "5",
+        "source-run",
+        source="models:/m-source-model",
+    )
+
+    def fake_export(**kwargs):
+        successful_migration.calls["export"] = kwargs
+        root = Path(kwargs["output_dir"])
+        model_dir = root / "run" / "m-source-model"
+        artifacts = model_dir / "artifacts"
+        artifacts.mkdir(parents=True)
+        (root / "version.json").write_text("{}", encoding="utf-8")
+        (root / "run" / "run.json").write_text("{}", encoding="utf-8")
+        (model_dir / "logged_model.json").write_text("{}", encoding="utf-8")
+        (artifacts / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+
+    monkeypatch.setattr(migration, "export_model_version", fake_export)
+
+    migration.migrate_model_version(**successful_migration.arguments)
+
+    call = successful_migration.calls["export"]
+    assert call["export_version_model"] is False
+    assert call["vrm_model_artifact_path"] == ""
+
+
 def test_scopes_profiles_and_mlflow_uris_and_restores_them_on_failure(
     successful_migration, monkeypatch
 ):
@@ -285,6 +387,50 @@ def test_scopes_profiles_and_mlflow_uris_and_restores_them_on_failure(
     finally:
         mlflow.set_tracking_uri(previous_tracking_uri)
         mlflow.set_registry_uri(previous_registry_uri)
+
+
+def test_profile_context_serializes_process_global_state():
+    first_entered = Event()
+    release_first = Event()
+    second_started = Event()
+    second_entered = Event()
+    errors = []
+
+    def first_worker():
+        try:
+            with migration._profile_context("FIRST"):
+                first_entered.set()
+                if not release_first.wait(timeout=5):
+                    raise AssertionError("timed out waiting to release first context")
+        except Exception as error:
+            errors.append(error)
+
+    def second_worker():
+        try:
+            second_started.set()
+            with migration._profile_context("SECOND"):
+                second_entered.set()
+        except Exception as error:
+            errors.append(error)
+
+    first = Thread(target=first_worker)
+    second = Thread(target=second_worker)
+    first.start()
+    assert first_entered.wait(timeout=5)
+    second.start()
+    assert second_started.wait(timeout=5)
+
+    try:
+        assert not second_entered.wait(timeout=0.2)
+    finally:
+        release_first.set()
+
+    first.join(timeout=5)
+    second.join(timeout=5)
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert second_entered.is_set()
+    assert errors == []
 
 
 def test_rejects_non_ready_destination(successful_migration):

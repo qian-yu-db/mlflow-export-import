@@ -9,15 +9,15 @@ from mlflow_export_import.model_version import migrate_model_version
 
 
 SOURCE_PROFILE = "fevm-classic-stable"
-DESTINATION_PROFILE = "fe-sandbox-tech-summit"
+DESTINATION_PROFILE = "e2_demo_fieldeng"
 SOURCE_MODEL = "fins_genai.classic_ml.advanced_mlops_churn"
 SOURCE_VERSION = "5"
 DESTINATION_MODEL_PREFIX = (
-    "tech_summit_qyu_catalog.classic_ml.advanced_mlops_churn"
+    "fins_genai.classic_ml.advanced_mlops_churn_imported"
 )
 DESTINATION_EXPERIMENT_PREFIX = (
     "/Workspace/Users/q.yu@databricks.com/mlflow_experiments/"
-    "advanced_mlops_churn"
+    "advanced_mlops_churn_imported"
 )
 
 

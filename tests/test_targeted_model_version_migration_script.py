@@ -42,8 +42,8 @@ def test_runs_timestamped_migration_with_explicit_profiles(monkeypatch, capsys):
         source_model_version="5",
         source_run_id="source-run",
         destination_model_name=(
-            "tech_summit_qyu_catalog.classic_ml."
-            "advanced_mlops_churn_20260914_123456"
+            "fins_genai.classic_ml."
+            "advanced_mlops_churn_imported_20260914_123456"
         ),
         destination_model_version="1",
         destination_run_id="destination-run",
@@ -60,19 +60,19 @@ def test_runs_timestamped_migration_with_explicit_profiles(monkeypatch, capsys):
 
     result = script.main()
 
-    assert profiles == ["fevm-classic-stable", "fe-sandbox-tech-summit"]
+    assert profiles == ["fevm-classic-stable", "e2_demo_fieldeng"]
     assert migration_arguments == {
         "source_profile": "fevm-classic-stable",
-        "destination_profile": "fe-sandbox-tech-summit",
+        "destination_profile": "e2_demo_fieldeng",
         "source_model_name": "fins_genai.classic_ml.advanced_mlops_churn",
         "source_model_version": "5",
         "destination_model_name": (
-            "tech_summit_qyu_catalog.classic_ml."
-            "advanced_mlops_churn_20260914_123456"
+            "fins_genai.classic_ml."
+            "advanced_mlops_churn_imported_20260914_123456"
         ),
         "destination_experiment_name": (
             "/Workspace/Users/q.yu@databricks.com/mlflow_experiments/"
-            "advanced_mlops_churn_20260914_123456"
+            "advanced_mlops_churn_imported_20260914_123456"
         ),
         "output_dir": "/tmp/model-migration-20260914_123456",
         "await_creation_for": 600,
@@ -80,5 +80,5 @@ def test_runs_timestamped_migration_with_explicit_profiles(monkeypatch, capsys):
     assert result is expected_result
     output = capsys.readouterr().out
     assert "Authenticated fevm-classic-stable" in output
-    assert "Authenticated fe-sandbox-tech-summit" in output
+    assert "Authenticated e2_demo_fieldeng" in output
     assert "Migration completed" in output
